@@ -1,8 +1,7 @@
 from __future__ import annotations
-import enum
 import logging
 import re
-from typing import Any, Optional
+from typing import Any
 
 # Configure logger for this module
 logger = logging.getLogger(__name__)
@@ -44,21 +43,23 @@ EXAMPLES = r"""
         event_source: kafka
 """
 
-#Helper functions 
+# Helper functions
+
 
 def _is_valid_userid(userid: str) -> bool:
     """Validate if a string is a valid mainframe user ID.
-    
-    Validates that the user ID follows mainframe naming conventions after stripping trailing punctuation:
+
+    Validates that the user ID follows mainframe naming conventions after
+    stripping trailing punctuation:
     - Length between 2 and 8 characters
     - Must start with a letter
     - Can contain letters, numbers, and special characters (#, @, $)
-    
+
     Parameters
     ----------
     userid : str
         The user ID string to validate
-        
+
     Returns
     -------
     bool
@@ -67,54 +68,57 @@ def _is_valid_userid(userid: str) -> bool:
     userid = re.sub(r'[^\w\s]+$', '', userid)
     if not userid or len(userid) > 8 or len(userid) < 2:
         return False
-    
+
     # Must start with letter
     if not userid[0].isalpha():
         return False
-    
+
     # Can contain letters, numbers, and special chars (#, @, $)
     valid_chars = set('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789#@$')
     if not all(c in valid_chars for c in userid.upper()):
         return False
-    
+
     return True
 
-#Kafka related events 
+# Kafka related events
+
+
 def _get_full_alert_message_kafka(string: str) -> str | None:
     """Extract the alert message content from within quotation marks.
-    
+
     Uses regex pattern matching to find and extract text enclosed in
     double quotation marks from a Kafka event message string.
-    
+
     Parameters
     ----------
     string : str
         The raw message string containing quoted alert text
-        
+
     Returns
     -------
     str or None
-        The extracted alert message with leading/trailing whitespace removed,
-        or None if no quoted text is found
+        The extracted alert message with leading/trailing whitespace
+        removed, or None if no quoted text is found
     """
     pattern = r"\"(.*?)\""
     pattern_search = re.search(pattern, string)
     alert_message = None
-    if pattern_search != None: 
+    if pattern_search is not None:
         alert_message = pattern_search.group(1).strip()
     return alert_message
 
+
 def _get_alert_code_kafka(string: str) -> str:
     """Extract the alert code from an alert message.
-    
+
     Assumes the alert code is always the first space-separated token
     in the alert message string.
-    
+
     Parameters
     ----------
     string : str
         The alert message string
-        
+
     Returns
     -------
     str
@@ -123,17 +127,18 @@ def _get_alert_code_kafka(string: str) -> str:
     string_split = string.split(' ')
     return string_split[0]
 
+
 def _get_hostname_kafka(string: str) -> str | None:
     """Extract hostname from metadata string.
-    
+
     Extracts the hostname from a comma-separated metadata string,
     assuming the hostname is always the first value from CDP.
-    
+
     Parameters
     ----------
     string : str
         Comma-separated metadata string containing hostname
-        
+
     Returns
     -------
     str or None
@@ -143,21 +148,22 @@ def _get_hostname_kafka(string: str) -> str | None:
     if not string:
         logger.warning("Metadata string not found")
         return None
-    
+
     string_split = string.split(',')
     return string_split[0]
 
+
 def _get_ip_address(string: str) -> str | None:
     """Extract IPv4 address from a string using regex pattern matching.
-    
+
     Searches for an IPv4 address pattern (e.g., 192.168.1.1) within
     the provided string.
-    
+
     Parameters
     ----------
     string : str
         The string to search for an IP address
-        
+
     Returns
     -------
     str or None
@@ -166,23 +172,24 @@ def _get_ip_address(string: str) -> str | None:
     """
     ip_pattern = r'\b(?:\d{1,3}\.){3}\d{1,3}\b'
     pattern_search = re.search(ip_pattern, string)
-    if pattern_search != None: 
+    if pattern_search is not None:
         ip_address = pattern_search.group(0).strip()
-    else: 
+    else:
         ip_address = None
     return ip_address
 
+
 def _get_job_name(string: str) -> str | None:
     """Extract job name from an alert message.
-    
+
     Searches for the keyword 'job' (case-insensitive) and extracts
     the following word as the job name.
-    
+
     Parameters
     ----------
     string : str
         The alert message string to search
-        
+
     Returns
     -------
     str or None
@@ -192,23 +199,24 @@ def _get_job_name(string: str) -> str | None:
     substring = 'job'
     string_split = string.split(" ")
     job_name = None
-    for idx, strings in enumerate(string_split): 
+    for idx, strings in enumerate(string_split):
         if strings.lower() == substring:
-            if idx < len(string_split)-1: 
-                job_name = string_split[idx+1]
+            if idx < len(string_split) - 1:
+                job_name = string_split[idx + 1]
     return job_name
+
 
 def _get_group_name(string: str) -> str | None:
     """Extract group name from an alert message.
-    
+
     Searches for the keyword 'in' and extracts the following word
     as the group name.
-    
+
     Parameters
     ----------
     string : str
         The alert message string to search
-        
+
     Returns
     -------
     str or None
@@ -218,102 +226,110 @@ def _get_group_name(string: str) -> str | None:
     substring = 'in'
     string_split = string.split(" ")
     group_name = None
-    for idx, strings in enumerate(string_split): 
+    for idx, strings in enumerate(string_split):
         if strings == substring:
-            if idx < len(string_split)-1: 
-                group_name = string_split[idx+1]
+            if idx < len(string_split) - 1:
+                group_name = string_split[idx + 1]
     return group_name
+
 
 def _get_target_user_name(string: str) -> str | None:
     """Extract target user name from an alert message.
-    
+
     Searches for various keywords ('from', 'user', 'User', 'superuser',
     'Superuser', 'to', 'for') and extracts the following word as the
     target user name. Validates that the extracted value is a valid
     mainframe user ID.
-    
+
     Special handling for 'User' keyword: looks for target user after
     subsequent 'from' or 'for' keywords.
-    
+
     Parameters
     ----------
     string : str
         The alert message string to search
-        
+
     Returns
     -------
     str or None
-        The target user name (valid user ID following a keyword), or None
-        if no valid user ID is found
+        The target user name (valid user ID following a keyword), or
+        None if no valid user ID is found
     """
-    substrings = ['from', 'user', 'User', 'superuser', 'Superuser', 'to', 'for']
+    substrings = ['from', 'user', 'User', 'superuser', 'Superuser',
+                  'to', 'for']
     string_split = string.split(" ")
-    target_user_name = None 
+    target_user_name = None
     for idx, strings in enumerate(string_split):
-        if strings in substrings: 
-            if idx < len(string_split)-1:
+        if strings in substrings:
+            if idx < len(string_split) - 1:
                 if strings == "User":
                     # Look for target user after "from" or "for"
-                    for j in range(idx+2, len(string_split)-1):
+                    for j in range(idx + 2, len(string_split) - 1):
                         if string_split[j] in ['from', 'for']:
-                            if _is_valid_userid(string_split[j+1]):
-                                return string_split[j+1]
+                            if _is_valid_userid(string_split[j + 1]):
+                                return string_split[j + 1]
                     continue
 
-                if _is_valid_userid(string_split[idx+1]) and string_split[idx+1] != 'user': 
-                    target_user_name = string_split[idx+1]
+                if (_is_valid_userid(string_split[idx + 1]) and
+                        string_split[idx + 1] != 'user'):
+                    target_user_name = string_split[idx + 1]
                     return target_user_name
     return target_user_name
 
+
 def _get_action_user_name(string: str) -> str | None:
     """Extract action user name from an alert message.
-    
+
     Searches for the keyword 'by' or the pattern 'User X' and extracts
     the user who performed the action. Validates that the extracted value
     is a valid mainframe user ID and not 'unknown'.
-    
+
     First checks for 'User X' pattern at the start (edge case), then
     searches for user ID following 'by' keyword.
-    
+
     Parameters
     ----------
     string : str
         The alert message string to search
-        
+
     Returns
     -------
     str or None
-        The action user name (valid user ID following 'by' or after 'User'),
-        or None if no valid user ID is found
+        The action user name (valid user ID following 'by' or after
+        'User'), or None if no valid user ID is found
     """
     substring = 'by'
     string_split = string.split(" ")
-    action_user_name = None 
+    action_user_name = None
 
     # Check for "User X" pattern (action user at start edge case)
     for idx, strings in enumerate(string_split):
-        if strings == "User" and idx < len(string_split)-1:
-            if _is_valid_userid(string_split[idx+1]):
-                return string_split[idx+1]
+        if strings == "User" and idx < len(string_split) - 1:
+            if _is_valid_userid(string_split[idx + 1]):
+                return string_split[idx + 1]
 
-    for idx, strings in enumerate(string_split): 
-        if strings == substring: 
-            if idx < len(string_split)-1 and string_split[idx+1] != 'unknown': 
-                if _is_valid_userid(string_split[idx+1]):
-                    action_user_name = string_split[idx+1]
+    for idx, strings in enumerate(string_split):
+        if strings == substring:
+            if (idx < len(string_split) - 1 and
+                    string_split[idx + 1] != 'unknown'):
+                if _is_valid_userid(string_split[idx + 1]):
+                    action_user_name = string_split[idx + 1]
     return action_user_name
 
-def main(event: dict[str, Any], event_source: str | None = None) -> dict[str, Any]:
+
+def main(event: dict[str, Any], event_source: str | None = None) -> (
+        dict[str, Any]):
     """Extract zSecure alert attributes and add them to the event.
-    
-    This filter processes events from various sources (currently supports Kafka)
-    and extracts security-related attributes including alert code, message,
-    hostname, IP address, job name, group name, target user, and action user.
-    
+
+    This filter processes events from various sources (currently supports
+    Kafka) and extracts security-related attributes including alert code,
+    message, hostname, IP address, job name, group name, target user, and
+    action user.
+
     If any errors occur during processing, the original event is returned
     unchanged and errors are logged. Uses defensive programming to ensure
     the event processing pipeline never crashes.
-    
+
     Parameters
     ----------
     event : dict[str, Any]
@@ -322,14 +338,14 @@ def main(event: dict[str, Any], event_source: str | None = None) -> dict[str, An
     event_source : str or None, optional
         The source of the event (e.g., 'kafka'). Events from unsupported
         sources are passed through unchanged. Default is None.
-        
+
     Returns
     -------
     dict[str, Any]
-        The event dictionary with extracted attributes added to the 'body',
-        or the original event unchanged if processing fails or source is
-        not supported
-        
+        The event dictionary with extracted attributes added to the
+        'body', or the original event unchanged if processing fails or
+        source is not supported
+
     Notes
     -----
     Extracted fields added to event body:
@@ -342,7 +358,7 @@ def main(event: dict[str, Any], event_source: str | None = None) -> dict[str, An
     - target_user : str or None - Target user ID if present
     - action_user : str or None - Action user ID if present
     """
-    
+
     if event_source == 'kafka':
         try:
             # Safely access event body and message
@@ -350,52 +366,54 @@ def main(event: dict[str, Any], event_source: str | None = None) -> dict[str, An
             if not body:
                 logger.error("Event missing 'body' field")
                 return event
-            
+
             given_alert_message = body.get("message")
             if not given_alert_message:
                 logger.error("Event body missing 'message' field")
                 return event
-            
+
             # Extract alert message from quotes
-            alert_message = _get_full_alert_message_kafka(given_alert_message)
+            alert_message = _get_full_alert_message_kafka(
+                given_alert_message)
             if alert_message:
                 body["alert_message"] = alert_message
             else:
                 logger.warning("Could not extract alert message from event")
                 return event
-            
+
             # Extract alert code
             body["alert_code"] = _get_alert_code_kafka(alert_message)
-            
-            
+
             # Extract hostname from metadata
             metadata_string = body.get("metadata", "")
             hostname = _get_hostname_kafka(metadata_string)
             if hostname:
                 body["hostname"] = hostname
-                logger.debug(f"Extracted hostname: {hostname}")
+                logger.debug("Extracted hostname: %s", hostname)
             else:
                 logger.warning("Could not extract hostname from metadata")
-            
+
             # Extract optional fields - failures are acceptable
             body['ip_address'] = _get_ip_address(alert_message)
             body['job_name'] = _get_job_name(alert_message)
             body['group_name'] = _get_group_name(alert_message)
             body['target_user'] = _get_target_user_name(alert_message)
             body['action_user'] = _get_action_user_name(alert_message)
-            
+
             logger.debug("Successfully processed zSecure alert event")
             return event
-            
+
         except KeyError as e:
-            logger.error(f"Missing required field in event: {e}", exc_info=True)
+            logger.error("Missing required field in event: %s", e,
+                         exc_info=True)
             return event
         except Exception as e:
-            logger.error(f"Unexpected error processing event: {e}", exc_info=True)
+            logger.error("Unexpected error processing event: %s", e,
+                         exc_info=True)
             return event
-    
+
     else:
         # Non-kafka events are passed through unchanged
-        logger.debug(f"Event source '{event_source}' not supported, returning event unchanged")
+        logger.debug("Event source '%s' not supported, returning event "
+                     "unchanged", event_source)
         return event
-
