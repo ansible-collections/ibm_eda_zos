@@ -1,0 +1,35 @@
+---
+- name: Send an email to notify of an alert occurrence
+  hosts: "{{ target_hosts | default('localhost') }}"
+  gather_facts: false
+
+  vars:
+    alert_message: "{{ ansible_eda.event.body.alert_message }}"
+    alert_code: "{{ ansible_eda.event.body.alert_code | default('N/A', true) }}"
+    target_user: "{{ ansible_eda.event.body.target_user | default('N/A', true) }}"
+    group_name: "{{ ansible_eda.event.body.group_name | default('N/A', true) }}"
+    job_name: "{{ ansible_eda.event.body.job_name | default('N/A', true) }}"
+    hostname: "{{ ansible_eda.event.body.hostname | default('N/A', true) }}"
+    # Email configuration valued defined in AAP Template vars
+    email_recipients: "{{ security_alert_recipients }}"
+    email_from: "{{ security_alert_sender }}"
+    smtp_host: "{{ smtp_server }}"
+    smtp_port: "{{ smtp_server_port }}"
+    # Action status from stats
+    command_message: "{{ set_command_message | default('no command', true)}}"
+
+  tasks:
+    - name: Build HTML notification body
+      ansible.builtin.set_fact:
+        notification_body_html: "{{ lookup('template', 'templates/racf_email_alert.html.j2') }}"
+
+    - name: Send an e-mail to the administrator
+      community.general.mail:
+        host: "{{ smtp_host | default('localhost') }}"
+        port: "{{ smtp_port }}"
+        to: "{{ email_recipients }}"
+        from: "{{ email_from }}"
+        subject: "zSecure alert - {{ alert_message }}"
+        subtype: html
+        body: "{{ notification_body_html }}"
+      delegate_to: localhost

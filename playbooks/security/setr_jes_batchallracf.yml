@@ -1,0 +1,45 @@
+---
+- name: Issue SETROPTS JES RACF command
+  hosts: "{{ target_hosts | default('localhost') }}"
+  gather_facts: false
+  environment: "{{ system_environment }}"
+
+  vars:
+    alert_message: "{{ ansible_eda.event.body.alert_message | default('No Message Text', true) }}"
+
+  tasks:
+    - name: Show the alert event message
+      ansible.builtin.debug:
+        msg: "alert_message: {{ alert_message }}"
+
+    # Submit command to require JES to have user ID and password on the job statement
+    - name: Issue SETR JES command to test for the presence of a user ID and password on the job statement
+      ibm.ibm_zos_core.zos_tso_command:
+        commands:
+          - SETROPTS JES(BATCHALLRACF)
+      register: setr_result
+
+    # Submit command to list the RACF settings and verify if BATCHALLRACF is active
+    - name: Issue SETR LIST command to check the status of JES-BATCHALLRACF
+      ibm.ibm_zos_core.zos_tso_command:
+        commands:
+          - SETROPTS LIST
+      register: setr_result_after
+
+    - name: Set JES-BATCHALLRACF status
+      ansible.builtin.set_fact:
+        jes_status: >-
+          {{ 'JES-BATCHALLRACF OPTION IS ACTIVE'
+            if 'JES-BATCHALLRACF OPTION IS ACTIVE' in setr_result_after.output | string
+            else 'JES-BATCHALLRACF OPTION IS INACTIVE' }}
+
+    - name: Display JES-BATCHALLRACF status
+      ansible.builtin.debug:
+        msg: "{{ jes_status }}"
+
+    - name: Set command message for email notice
+      ansible.builtin.set_stats:
+        data:
+          set_command_message: "executed the SETROPTS JES(BATCHALLRACF) command \
+            {{ 'successfully' if setr_result.output[0].rc <= 0 else 'but failed' }}"
+        per_host: false

@@ -1,0 +1,130 @@
+---
+- name: Gather RACF User Details and Send Alert
+  hosts: "{{ target_hosts | default('localhost') }}"
+  gather_facts: false
+  environment: "{{ system_environment }}"
+
+  vars:
+    # Extract structured data provided by ansible_eda.event.body
+    alert_message: "{{ ansible_eda.event.body.alert_message | default('N/A', true) }}"
+    alert_code: "{{ ansible_eda.event.body.alert_code | default('N/A', true) }}"
+    hostname: "{{ ansible_eda.event.body.hostname | default('N/A', true) }}"
+    target_user: "{{ ansible_eda.event.body.target_user | default('N/A', true) }}"
+    group_name: "{{ ansible_eda.event.body.group_name | default('N/A', true) }}"
+    automated_action: "Executed LISTUSER {{ target_user }} on z/OS host {{ hostname }} to gather RACF user context."
+
+    # Email configuration valued defined in AAP Template vars
+    email_recipients: "{{ security_alert_recipients }}"
+    email_from: "{{ security_alert_sender }}"
+    smtp_host: "{{ smtp_server }}"
+    smtp_port: "{{ smtp_server_port }}"
+
+  tasks:
+    - name: Display alert information
+      ansible.builtin.debug:
+        msg:
+          - "Processing zSecure Alert"
+          - "Alert Code: {{ alert_code }}"
+          - "Target User: {{ target_user }}"
+          - "Hostname: {{ hostname }}"
+          - "Message: {{ alert_message }}"
+
+    - name: Run LISTUSER on the target user
+      ibm.ibm_zos_core.zos_tso_command:
+        commands: "LU {{ target_user }}"
+      register: listuser_output
+      ignore_errors: true
+
+    # Build LISTUSER output content string (only if successful)
+    - name: Build LISTUSER output content string
+      ansible.builtin.set_fact:
+        lu_joined: "{{ listuser_output.output[0].content | join('\n') }}"
+      when: listuser_output is succeeded and listuser_output.output is defined
+
+    # Set default values if LISTUSER failed
+    - name: Set default if LISTUSER failed
+      ansible.builtin.set_fact:
+        lu_joined: "LISTUSER command failed or user not found"
+        lu_user_id: "UNKNOWN"
+        lu_owner: "UNKNOWN"
+        lu_created: "UNKNOWN"
+        lu_default_group: "UNKNOWN"
+        lu_attributes: "UNKNOWN"
+      when: listuser_output is failed or listuser_output.output is not defined
+
+    # Parse key fields from LISTUSER output (only if successful)
+    - name: Parse LISTUSER key fields
+      ansible.builtin.set_fact:
+        lu_user_id: >-
+          {{
+            lu_joined
+            | regex_search('USER=[^ ]+')
+            | regex_replace('^USER=', '')
+            | default('UNKNOWN', true)
+          }}
+        lu_owner: >-
+          {{
+            lu_joined
+            | regex_search('OWNER=[^ ]+')
+            | regex_replace('^OWNER=', '')
+            | default('UNKNOWN', true)
+          }}
+        lu_created: >-
+          {{
+            lu_joined
+            | regex_search('CREATED=[^ ]+')
+            | regex_replace('^CREATED=', '')
+            | default('UNKNOWN', true)
+          }}
+        lu_default_group: >-
+          {{
+            lu_joined
+            | regex_search('DEFAULT-GROUP=[^ ]+')
+            | regex_replace('^DEFAULT-GROUP=', '')
+            | default('UNKNOWN', true)
+          }}
+        lu_attributes: >-
+          {{
+            lu_joined
+            | regex_search('ATTRIBUTES=[^ ]+')
+            | regex_replace('^ATTRIBUTES=', '')
+            | default('UNKNOWN', true)
+          }}
+      when: listuser_output is succeeded and listuser_output.output is defined
+
+    - name: Build HTML notification body
+      ansible.builtin.set_fact:
+        notification_body_html: "{{ lookup('template', 'templates/racf_1107_1108_alert.html.j2') }}"
+
+    - name: Send security email with RACF context
+      community.general.mail:
+        host: "{{ smtp_host }}"
+        port: "{{ smtp_port }}"
+        to: "{{ email_recipients }}"
+        from: "{{ email_from }}"
+        subject: "zSecure Alert: {{ alert_code }} - Group Authority Change on {{ hostname }}"
+        subtype: html
+        body: "{{ notification_body_html }}"
+      delegate_to: localhost
+      register: mail_result
+      ignore_errors: true
+
+    - name: Log email sending success
+      ansible.builtin.debug:
+        msg: "✅ Email sent successfully to {{ email_recipients | join(', ') }}"
+      when: mail_result is succeeded
+
+    - name: Log email sending failure
+      ansible.builtin.debug:
+        msg: "❌ Failed to send email: {{ mail_result.msg | default('Unknown error') }}"
+      when: mail_result is failed
+
+    - name: Create summary report
+      ansible.builtin.debug:
+        msg:
+          - "=== Alert Processing Summary ==="
+          - "Alert Code: {{ alert_code }}"
+          - "Target User: {{ target_user }}"
+          - "Hostname: {{ hostname }}"
+          - "LISTUSER Status: {{ 'Success' if listuser_output is succeeded else 'Failed' }}"
+          - "Email Status: {{ 'Sent' if mail_result is succeeded else 'Failed' }}"
