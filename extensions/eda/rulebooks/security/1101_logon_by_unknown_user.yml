@@ -1,0 +1,24 @@
+---
+- name: Rule to handle alert 1101 - Logon of an unknown user
+  hosts: all
+  sources:
+    - name: kafka
+      ansible.eda.kafka:
+        topic: "{{ kafka_topic }}"
+        host: "{{ kafka_host }}"
+        port: "{{ kafka_port }}"
+        security_protocol: "{{ security_protocol }}"
+        ssl_cafile: "{{ cafile }}"
+        check_hostname: true
+
+      filters:
+        - ibm.ibm_eda_zos.security_alerts:
+            event_source: "kafka"
+
+  rules:
+    - name: "Handle alert 1101 - Logon of an unknown user"
+      condition: event.body.alert_code == "C2P1101I"
+      action:
+        run_workflow_template:
+          name: EDA Alert 1101 Response Workflow
+          organization: "Default"

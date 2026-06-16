@@ -1,0 +1,24 @@
+---
+- name: Monitor zSecure Alerts from Kafka for Group Authority Change
+  hosts: all
+  sources:
+    - name: kafka
+      ansible.eda.kafka:
+        topic: "{{ kafka_topic }}"
+        host: "{{ kafka_host }}"
+        port: "{{ kafka_port }}"
+        security_protocol: "{{ security_protocol }}"
+        ssl_cafile: "{{ cafile }}"
+
+      filters:
+        - ibm.ibm_eda_zos.security_alerts:
+            event_source: "kafka"
+
+  rules:
+    - name: Handle Group Authority Granted or Removed (C2P1107I, C2P1108I)
+      condition: >
+        event.body.alert_code == "C2P1107I" or event.body.alert_code == "C2P1108I"
+      action:
+        run_job_template:
+          name: zSecure - Respond to Group Authority Change
+          organization: "Default"
