@@ -1,0 +1,15 @@
+---
+- name: Run hello world when the machine in cURL payload matches
+  hosts: localhost
+  sources:
+    - ansible.eda.webhook:
+        host: 0.0.0.0
+        port: 5001
+
+  rules:
+    - name: Run Hello World playbook if machine in message matches
+      condition: event.payload.machine[0] == 'ec01234'
+      action:
+        run_job_template:
+          name: "Hello World"
+          organization: "Default"

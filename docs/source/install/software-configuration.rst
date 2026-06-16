@@ -1,0 +1,332 @@
+.. ...........................................................................
+.. © Copyright IBM Corporation 2020, 2026                                    .
+.. ...........................................................................
+.. TODO:
+..    1) Request all contributors provide a reference (ref) back to the
+..       collections ansible_content page like the ibm_zos_core collection.
+..       For now, static links are used (which might actually be safer :) )
+.. ...........................................................................
+==================
+Software Configuration
+==================
+
+These instructions provides steps for configuring rulebooks and playbooks from the IBM EDA z/OS collection in Ansible Automation Platform (AAP) for first-time users. 
+
+This configuration enables Event-Driven Ansible to consume zSecure alerts from z/OS via Kafka.
+
+.. note::
+   For the end-to-end workflow to run successfully, ensure that you configure z/OS with zSecure alerts routing to Kafka for Event-Driven Ansible consumption.
+
+Prerequisites
+-------------
+
+* Ansible Automation Platform (AAP) installed and accessible.
+
+* Access to GitHub for repository management.
+
+* z/OS system with zSecure configured.
+
+* Kafka broker configured and accessible.
+
+* SMTP server for email notifications.
+
+* Appropriate credentials for:
+  
+  * GitHub/Source Control
+  * z/OS managed nodes
+  * Kafka broker
+  * SMTP server
+
+Environment Preparation
+------------------------
+
+Before you begin the configuration:
+
+1. Ensure z/OS is configured with zSecure alerts.
+
+2. Verify Kafka broker is receiving z/OS alerts.
+
+3. Confirm network connectivity between AAP and all required systems.
+
+4. Gather all necessary credentials and connection details.
+
+.. warning::
+   Feel free to make any changes to the playbooks and rulebooks to adapt them to your specific environment requirements.
+
+Step 1: Obtain the collection
+------------------------------
+
+Clone the ``ibm.ibm_eda_zos`` collection from GitHub to your local machine:
+
+.. code-block:: bash
+
+   git clone https://github.com/ansible-collections/ibm_eda_zos.git
+
+**Collection Structure:**
+
+* **Rulebooks location:** ``/extensions/eda/rulebooks/security``
+* **Playbooks location:** ``/playbooks/security``
+
+Step 2: Create a repository
+----------------------------
+
+1. Review the cloned collection and make any necessary modifications for your environment.
+2. Create a new repository in your GitHub account.
+3. Push the collection (with or without modifications) to your new repository.
+
+.. code-block:: bash
+
+   cd ibm_eda_zos
+   git remote set-url origin https://github.com/<your-username>/<your-repo-name>.git
+   git push -u origin main
+
+Step 3: Set Up credentials
+---------------------------
+
+Configure the following credentials in Ansible Automation Platform:
+
+Automation Controller Credentials
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+1. **Source Control Credential**
+   
+   * **Purpose:** Connect to GitHub
+   * **Type:** Source Control
+   * **Required Information:**
+     
+     * GitHub username
+     * Personal access token or password
+
+2. **Machine Credentials (z/OS)**
+   
+   * **Purpose:** Connect to the z/OS managed node
+   * **Type:** Machine
+   * **Required Information:**
+     
+     * SSH username
+     * SSH private key or password
+     * Privilege escalation method (if required)
+
+Event-Driven Ansible Controller Credentials
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+1. **Source Control Credential**
+   
+   * **Purpose:** Connect to GitHub
+   * **Type:** Source Control
+   * **Required Information:**
+     
+     * GitHub username
+     * Personal access token or password
+
+2. **Red Hat Ansible Automation Platform Credential**
+   
+   * **Purpose:** Connect to the Automation Controller
+   * **Type:** Red Hat Ansible Automation Platform
+   * **Required Information:**
+     
+     * Automation Controller URL
+     * OAuth token or username/password
+
+Step 4: Create Projects
+-----------------------
+
+Create projects in both controllers to access the collection content.
+
+Automation Controller Project
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+1. Navigate to **Resources → Projects**.
+2. Click **Add**.
+3. Configure the project:
+   
+   * **Name:** IBM EDA z/OS Collection
+   * **Organization:** Select your organization
+   * **Source Control Type:** Git
+   * **Source Control URL:** Your GitHub repository URL
+   * **Source Control Credential:** Select the GitHub credential created in Step 3
+   * **Update Revision on Launch:** Enabled (recommended)
+
+4. Click **Save**.
+5. Wait for the project sync to complete.
+
+Event-Driven Ansible Controller Project
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+1. Navigate to **Projects**
+2. Click **Create project**
+3. Configure the project:
+   
+   * **Name:** IBM EDA z/OS Collection
+   * **Source Control Type:** Git
+   * **Source Control URL:** Your GitHub repository URL
+   * **Source Control Credential:** Select the GitHub credential created in Step 3
+
+4. Click **Create project**
+5. Wait for the project sync to complete
+
+.. note::
+   Both controllers now have access to the rulebooks and playbooks in the collection.
+
+Step 5: Playbook Setup in Automation Controller
+------------------------------------------------
+
+Configure the Automation Controller to execute playbooks in response to events.
+
+Create a Host
+^^^^^^^^^^^^^
+
+1. Navigate to **Resources → Hosts**
+2. Click **Add**
+3. Configure the host:
+   
+   * **Name:** Your z/OS managed node hostname
+   * **Description:** z/OS system for EDA security automation
+
+4. Click **Save**
+
+Create an Inventory
+^^^^^^^^^^^^^^^^^^^^
+
+1. Navigate to **Resources → Inventories**
+2. Click **Add → Add inventory**
+3. Configure the inventory:
+   
+   * **Name:** z/OS EDA Inventory
+   * **Organization:** Select your organization
+
+4. Click **Save**
+5. Navigate to the **Hosts** tab
+6. Click **Add**
+7. Select the host created in the previous step
+8. Click **Save**
+
+Create a Job Template
+^^^^^^^^^^^^^^^^^^^^^^
+
+1. Navigate to **Resources → Templates**
+2. Click **Add → Add job template**
+3. Configure the job template:
+
+   **Basic Information:**
+   
+   * **Name:** ``zSecure - Respond to Group Authority Change``
+   * **Job Type:** Run
+   * **Inventory:** Select ``z/OS EDA Inventory``
+   * **Project:** Select ``IBM EDA z/OS Collection``
+   * **Playbook:** ``playbooks/security/respond_to_1107_1108_group_authority.yml``
+   * **Credentials:** Select the z/OS machine credential
+
+   **Extra Variables:**
+   
+   .. code-block:: yaml
+
+      # Email configuration
+      security_alert_recipients: <security-team-email>
+      security_alert_sender: <eda-alerts-email>
+      smtp_server: <your-smtp-relay>
+      smtp_server_port: <your-smtp-port>
+
+   **Example:**
+   
+   .. code-block:: yaml
+
+      # Email configuration
+      security_alert_recipients: security-team@example.com
+      security_alert_sender: eda-alerts@example.com
+      smtp_server: smtp.example.com
+      smtp_server_port: 587
+
+4. Click **Save**
+
+.. tip::
+   Test the job template manually before activating the rulebook to ensure proper configuration.
+
+Step 6: Rulebook Setup in Event-Driven Ansible Controller
+----------------------------------------------------------
+
+Configure the Event-Driven Ansible Controller to listen for events and trigger automation.
+
+Create a Rulebook Activation
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+1. Navigate to **Rulebook Activations**
+2. Click **Create rulebook activation**
+3. Configure the rulebook activation:
+
+   **Basic Information:**
+   
+   * **Name:** ``zSecure Group Authority Monitor``
+   * **Description:** Monitors Kafka for zSecure group authority change alerts
+   * **Organization:** Default (or your organization)
+   * **Project:** Select ``IBM EDA z/OS Collection``
+   * **Rulebook:** Select the appropriate rulebook from the dropdown
+     
+     * Path: ``extensions/eda/rulebooks/security/<rulebook-name>.yml``
+
+   **Credentials:**
+   
+   * **Red Hat Ansible Automation Platform:** Select the AAP credential created in Step 3
+
+   **Decision Environment:**
+   
+   * Select an appropriate decision environment that includes:
+     
+     * Kafka Python libraries
+     * Required Ansible collections
+     * SSL certificate support
+
+   **Extra Variables:**
+   
+   .. code-block:: yaml
+
+      cafile: <path-to-ca-cert-file>
+      kafka_host: <your-kafka-broker>
+      kafka_port: <your-kafka-ssl-port>
+      kafka_topic: <your-kafka-topic>
+      security_protocol: SSL
+
+   **Example:**
+   
+   .. code-block:: yaml
+
+      cafile: /etc/pki/tls/certs/kafka-ca.crt
+      kafka_host: kafka.example.com
+      kafka_port: 9093
+      kafka_topic: zsecure-alerts
+      security_protocol: SSL
+
+4. Click **Create rulebook activation**
+
+.. important::
+   The rulebook activation will start listening for events immediately upon creation if enabled.
+
+Step 7: Run Your Event
+----------------------
+
+Testing the Configuration
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+1. **Verify Rulebook Activation Status:**
+   
+   * Navigate to **Rulebook Activations**
+   * Confirm your activation shows as "Running"
+   * Check the logs for any connection errors
+
+2. **Generate a Test Event:**
+   
+   * Trigger a group authority change on your z/OS system
+   * Verify the alert is sent to Kafka
+
+3. **Monitor Event Processing:**
+   
+   * Watch the rulebook activation logs in EDA Controller
+   * Verify the event is received and matched
+   * Confirm the job template is triggered in Automation Controller
+
+4. **Verify Automation Execution:**
+   
+   * Navigate to **Views → Jobs** in Automation Controller
+   * Locate the triggered job
+   * Review the job output
+   * Confirm email notification was sent
