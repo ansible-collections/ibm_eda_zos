@@ -1,3 +1,39 @@
+################################################################################
+# Copyright (c) IBM Corporation 2026
+################################################################################
+#
+################################################################################
+# This playbook removes OMVS UID access from a TSO user by issuing the
+# `ALTUSER <user> OMVS(NOUID)` command when a valid target user is provided
+# from an Event-Driven Ansible alert.
+#
+# The playbook reads the target user and alert text from an incoming Ansible
+# EDA event, using `ansible_eda.event.body.target_user` and
+# `ansible_eda.event.body.alert_message`.
+#
+# If the target user is missing or resolves to `UNKNOWN`, the playbook does not
+# issue any RACF command. Instead, it logs a message and records a status value
+# for downstream notification processing.
+#
+# If a valid target user is present, the playbook:
+# - retrieves the current OMVS UID attributes with `LISTUSER <user> OMVS NORACF`
+# - issues the RACF command `ALTUSER <user> OMVS(NOUID)`
+# - retrieves the updated OMVS UID attributes after the change
+# - displays command output for troubleshooting
+# - records the command result using `set_stats` for later workflow steps such
+#   as email notification
+#
+# Required configuration:
+# - `system_environment` must provide the environment needed to run z/OS tasks.
+# - The target host must be reachable and capable of running
+#   `ibm.ibm_zos_core.zos_tso_command`.
+# - The `ibm.ibm_zos_core` collection must be installed and available.
+# - The executing identity must have sufficient RACF authority to run
+#   `ALTUSER` and `LISTUSER`.
+# - The incoming event should provide `ansible_eda.event.body.target_user` for
+#   UID removal processing.
+################################################################################
+
 ---
 - name: Remove the UID status from the tso user
   hosts: "{{ target_hosts | default('localhost') }}"

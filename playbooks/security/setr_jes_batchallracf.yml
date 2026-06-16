@@ -1,3 +1,31 @@
+################################################################################
+# Copyright (c) IBM Corporation 2026
+################################################################################
+
+################################################################################
+# This playbook enables the RACF JES option `BATCHALLRACF` by issuing the
+# `SETROPTS JES(BATCHALLRACF)` command in response to an Event-Driven Ansible
+# alert.
+#
+# The playbook reads the alert text from an incoming Ansible EDA event using
+# `ansible_eda.event.body.alert_message`.
+#
+# After issuing the SETROPTS command, the playbook runs `SETROPTS LIST` to
+# verify whether the JES-BATCHALLRACF option is active, displays the resulting
+# status, and records the command result using `set_stats` for downstream
+# notification processing.
+#
+# Required configuration:
+# - `system_environment` must provide the environment needed to run z/OS tasks.
+# - The target host must be reachable and capable of running
+#   `ibm.ibm_zos_core.zos_tso_command`.
+# - The `ibm.ibm_zos_core` collection must be installed and available.
+# - The executing identity must have sufficient RACF authority to run
+#   `SETROPTS`.
+# - The incoming event should provide
+#   `ansible_eda.event.body.alert_message` for audit and notification context.
+################################################################################
+
 ---
 - name: Issue SETROPTS JES RACF command
   hosts: "{{ target_hosts | default('localhost') }}"

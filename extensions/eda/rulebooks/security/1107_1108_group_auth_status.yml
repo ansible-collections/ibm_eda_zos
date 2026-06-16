@@ -1,3 +1,25 @@
+################################################################################
+# Copyright (c) IBM Corporation 2026
+################################################################################
+#
+################################################################################
+# This rulebook monitors security events delivered through Kafka for alerts
+# C2P1107I and C2P1108I, which indicate that group authority has been granted
+# or removed.
+#
+# When either alert is received, the rulebook matches the event and launches
+# the configured Ansible Automation Platform job template
+# `zSecure - Respond to Group Authority Change` in the `Default` organization.
+#
+# Required configuration:
+# - Kafka connectivity values must be provided for `kafka_topic`,
+#   `kafka_host`, `kafka_port`, `security_protocol`, and `cafile`.
+# - The Kafka source must receive zSecure alert events in the expected format.
+# - The `ibm.ibm_eda_zos.security_alerts` filter plugin must be available.
+# - The job template `zSecure - Respond to Group Authority Change` must exist
+#   and be accessible to the rulebook.
+################################################################################
+
 ---
 - name: Monitor zSecure Alerts from Kafka for Group Authority Change
   hosts: all
