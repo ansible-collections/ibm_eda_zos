@@ -1,6 +1,0 @@
-# TO-DO: add python packages that are required for testing this collection
-ansible-dev-tools
-pytest-ansible
-pytest-xdist
-molecule
-ansible-lint
