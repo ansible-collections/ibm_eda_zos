@@ -169,7 +169,7 @@ Event body fields
 Variables
 =========
 
-The following variables must be defined when activating the rulebook in Ansible Automation Platform:
+When you activate the rulebook in Ansible Automation Platform, the following variables are defined:
 
 .. code-block:: yaml
 
@@ -248,8 +248,8 @@ Notes
 
 * The rulebook runs continuously, monitoring the Kafka topic for new events.
 * Each event is processed independently. There is no correlation window or timeout.
-* The zsecure filter plugin must be installed in the decision environment for the condition to evaluate correctly.
-* The referenced AAP job template must exist before activating the rulebook.
+* Ensure that you have instaleed the zsecure filter plugin in the decision environment for the condition to evaluate correctly.
+* Before you activate the rulebook, ensure that the referenced AAP work template exists.
 * System clocks should be synchronised between Kafka, AAP and z/OS for accurate event timestamps.
 
 Troubleshooting
@@ -258,16 +258,16 @@ Troubleshooting
 Rulebook not triggering
 -----------------------
 
-* Verify the C2P1107I or C2P1108I events are being published to Kafka.
-* Check event format matches the expected structure.
-* Confirm the alert code field is present and exactly matches one of the two codes.
+* Verify whether the C2P1103I events are being published to Kafka.
+* Verify whether the event format matches the expected structure.
+* Verify whether the alert code field is present and exactly matches.
 * Review activation logs for errors.
 
 Events not matching
 -------------------
 
 * Enable verbose logging in activation settings.
-* Verify the alert_code field value is exact (case sensitive).
+* Verify whether the alert_code field value is exact (case sensitive).
 * Check that the filter plugin is parsing events correctly.
 
 See Also

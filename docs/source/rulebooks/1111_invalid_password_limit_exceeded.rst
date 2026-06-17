@@ -6,7 +6,7 @@
 1111_invalid_password_limit_exceeded
 =====================================
 
-Monitor zSecure Alerts from Kafka for Password Threshold Exceeded Alert.
+Monitor zSecure alerts from Kafka for password threshold exceeded alert.
 
 Synopsis
 ========
@@ -213,7 +213,7 @@ Event B body fields
 Variables
 =========
 
-The following variables must be defined when activating the rulebook in Ansible Automation Platform:
+When you activate the rulebook in Ansible Automation Platform, the following variables are defined:
 
 .. code-block:: yaml
 
@@ -301,9 +301,9 @@ Notes
 * The rulebook runs continuously, monitoring the Kafka topic for new events.
 * Event correlation is stateful and maintains event history within the timeout window.
 * Multiple correlation windows can be active simultaneously for different users.
-* The zsecure filter plugin must be installed in the decision environment for the conditions to evaluate correctly.
-* The referenced AAP job template must exist before activating the rulebook.
-* System clocks must be synchronised between Kafka, AAP and z/OS for accurate timestamp comparison.
+* Ensure that the zsecure filter plugin is installed in the decision environment for the conditions to evaluate correctly.
+* Before you activate the rulebook, ensure that the referenced AAP work template exists.
+* System clocks should be synchronised between Kafka, AAP and z/OS for accurate timestamp comparison.
 
 Troubleshooting
 ===============
@@ -311,29 +311,29 @@ Troubleshooting
 Rulebook not triggering
 -----------------------
 
-* Verify both Event A and Event B are being published to Kafka.
-* Check event format matches the expected structure for both events.
-* Confirm the ICH408I message contains the text LOGON/JOB INITIATION.
+* Verify whether both Event A and Event B are published to Kafka.
+* Verify whether the event format matches the expected structure for both events.
+* Verify whether the ICH408I message contains the text LOGON/JOB INITIATION.
 * Review activation logs for correlation timeout messages.
 * Validate timestamp fields are present in event metadata.
 
 Event correlation timeout
 --------------------------
 
-* Check system clock synchronisation between Kafka and AAP.
+* Verify whether the system clock synchronisation between Kafka and AAP.
 * Increase the timeout value if messages are delayed in your pipeline.
-* Verify Event B is published after Event A.
+* Verify whether the Event B is published after Event A.
 * Review Kafka consumer lag metrics.
 
 Events not matching
 -------------------
 
 * Enable verbose logging in activation settings.
-* Verify the alert_code field in Event A.
+* Verify whether the alert_code field in Event A.
 * Confirm the ICH408I message format in Event B.
-* Check that the filter plugin is correctly parsing events.
+* Verify whether the filter plugin is correctly parsing events.
 
-See Also
+See also
 ========
 
 - Playbook suggestion, see :ref:`gather_password_policy_information`.
