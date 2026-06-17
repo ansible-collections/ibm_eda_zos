@@ -336,5 +336,5 @@ Events not matching
 See Also
 ========
 
-* Playbook suggestion, see :ref:`gather_password_policy_information`.
-* To know more about Ansible Automation Platform, see `Getting started as an automation developer <https://docs.redhat.com/en/documentation/red_hat_ansible_automation_platform/2.6/get_started_as_an_automation_developer>`.
+- Playbook suggestion, see :ref:`gather_password_policy_information`.
+- `Ansible Automation Platform - Getting started as an automation developer <https://docs.redhat.com/en/documentation/red_hat_ansible_automation_platform/2.6/get_started-assembly_gs_auto_dev>`_.
