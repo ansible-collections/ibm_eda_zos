@@ -80,7 +80,7 @@ Step 2: Create a repository
    git remote set-url origin https://github.com/<your-username>/<your-repo-name>.git
    git push -u origin main
 
-Step 3: Set Up credentials
+Step 3: Set up credentials
 ---------------------------
 
 Configure the following credentials in Ansible Automation Platform:
@@ -128,7 +128,7 @@ Event-Driven Ansible Controller Credentials
      * Automation Controller URL
      * OAuth token or username/password
 
-Step 4: Create Projects
+Step 4: Create projects
 -----------------------
 
 Create projects in both controllers to access the collection content.
@@ -173,7 +173,7 @@ Step 5: Playbook Setup in Automation Controller
 
 Configure the Automation Controller to execute playbooks in response to events.
 
-Create a Host
+Create a host
 ^^^^^^^^^^^^^
 
 1. Navigate to **Resources → Hosts**
@@ -242,13 +242,13 @@ Create a Job Template
 .. tip::
    Test the job template manually before activating the rulebook to ensure proper configuration.
 
-Step 6: Rulebook Setup in Event-Driven Ansible Controller
+Step 6: Rulebook setup in Event-Driven Ansible controller
 ----------------------------------------------------------
 
 Configure the Event-Driven Ansible Controller to listen for events and trigger automation.
 
 Create a Rulebook Activation
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 1. Navigate to **Rulebook Activations**
 2. Click **Create rulebook activation**
@@ -299,34 +299,7 @@ Create a Rulebook Activation
 4. Click **Create rulebook activation**
 
 .. important::
-   The rulebook activation will start listening for events immediately upon creation if enabled.
+   The rulebook activation starts listening for events immediately upon creation if enabled.
 
-Step 7: Run Your Event
+Step 7: Run your event
 ----------------------
-
-Testing the Configuration
-^^^^^^^^^^^^^^^^^^^^^^^^^
-
-1. **Verify Rulebook Activation Status:**
-   
-   * Navigate to **Rulebook Activations**
-   * Confirm your activation shows as "Running"
-   * Check the logs for any connection errors
-
-2. **Generate a Test Event:**
-   
-   * Trigger a group authority change on your z/OS system
-   * Verify the alert is sent to Kafka
-
-3. **Monitor Event Processing:**
-   
-   * Watch the rulebook activation logs in EDA Controller
-   * Verify the event is received and matched
-   * Confirm the job template is triggered in Automation Controller
-
-4. **Verify Automation Execution:**
-   
-   * Navigate to **Views → Jobs** in Automation Controller
-   * Locate the triggered job
-   * Review the job output
-   * Confirm email notification was sent
