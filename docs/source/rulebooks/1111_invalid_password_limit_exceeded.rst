@@ -336,7 +336,7 @@ Events not matching
 See Also
 ========
 
-*  Playbook suggestion, see :ref:`_gather_password_policy_information:`.
+*  Playbook suggestion, see :ref:`gather_password_policy_information`.
 * `Ansible Automation Platform - Getting started as an automation developer`_.
 
 

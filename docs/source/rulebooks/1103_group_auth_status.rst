@@ -243,7 +243,7 @@ Events not matching
 See Also
 ========
 
-* Playbook suggestions, see :ref:`_remove_uid_access:` and `_send_alert_email:`.
+* Playbook suggestions, see :ref:`remove_uid_access` and `send_alert_email`.
 * `Ansible Automation Platform - Getting started as an automation developer`_.
 
 

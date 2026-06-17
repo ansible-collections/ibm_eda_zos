@@ -273,7 +273,7 @@ Events not matching
 See Also
 ========
 
-* Playbook suggestion, see :ref:`_gather_listuser_information:`.
+* Playbook suggestion, see :ref:`gather_listuser_information`.
 * `Ansible Automation Platform - Getting started as an automation developer`_.
 
 

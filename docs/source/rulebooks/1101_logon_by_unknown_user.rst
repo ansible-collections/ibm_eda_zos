@@ -243,7 +243,7 @@ Events not matching
 See Also
 --------
 
-*  Playbook suggestions, see :ref:`_setr_jes_batchallracf:` and `_send_alert_email:`.
+*  Playbook suggestions, see :ref:`setr_jes_batchallracf` and `send_alert_email`.
 * `Ansible Automation Platform - Getting started as an automation developer`_.
 
 
