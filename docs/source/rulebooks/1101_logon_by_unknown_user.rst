@@ -243,13 +243,13 @@ Events not matching
 See Also
 --------
 
-* AAP job template TBD (documented on its playbook page in this collection).
-* `Event-Driven Ansible Controller user guide`_.
+*  Playbook suggestions, see :ref:`_setr_jes_batchallracf` and `_send_alert_email`.
+* `Ansible Automation Platform - Getting started as an automation developer`_.
 
 
 .. .............................................................................
 .. External Links
 .. .............................................................................
 
-.. _Event-Driven Ansible Controller User Guide:
-.. <https://docs.redhat.com/en/documentation/red_hat_ansible_automation_platform/2.4/html-single/event-driven_ansible_controller_user_guide/index>
+.. _Ansible Automation Platform - Getting started as an automation developer:
+.. <https://docs.redhat.com/en/documentation/red_hat_ansible_automation_platform/2.6/get_started-assembly_gs_auto_dev>

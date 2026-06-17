@@ -273,13 +273,13 @@ Events not matching
 See Also
 ========
 
-* AAP job template zSecure - Respond to Group Authority Change (documented on its playbook page in this collection).
-* `Event-Driven Ansible Controller user guide`_.
+* Playbook suggestion, see :ref:`_gather_listuser_information`.
+* `Ansible Automation Platform - Getting started as an automation developer`_.
 
 
 .. .............................................................................
 .. External Links
 .. .............................................................................
 
-.. _Event-Driven Ansible Controller User Guide:
-.. <https://docs.redhat.com/en/documentation/red_hat_ansible_automation_platform/2.4/html-single/event-driven_ansible_controller_user_guide/index>
+.. _Ansible Automation Platform - Getting started as an automation developer:
+.. <https://docs.redhat.com/en/documentation/red_hat_ansible_automation_platform/2.6/get_started-assembly_gs_auto_dev>
