@@ -282,4 +282,4 @@ See Also
 .. .............................................................................
 
 .. _Ansible Automation Platform - Getting started as an automation developer:
-.. https://docs.redhat.com/en/documentation/red_hat_ansible_automation_platform/2.6/get_started-assembly_gs_auto_dev
+.. <https://docs.redhat.com/en/documentation/red_hat_ansible_automation_platform/2.6/get_started-assembly_gs_auto_dev>
