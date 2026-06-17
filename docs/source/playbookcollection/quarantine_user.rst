@@ -95,7 +95,7 @@ Output
 
 The playbook produces two outputs:
 
-* A status message set via ``set_stats`` that indicates whether the ALTUSER command was executed 
+* A status message set through ``set_stats`` that indicates whether the ALTUSER command was executed 
   successfully or failed. This message is available to subsequent playbooks or notification workflows.
 
 * A run summary in the AAP job output showing the alert message, target user, RACF command results, 
@@ -131,6 +131,6 @@ See Also
 --------
 
 * EDA rulebooks that launch this playbook (e.g., ``1101_logon_by_unknown_user``).
-* `ibm.ibm_zos_core.zos_tso_command <https://ibm.github.io/z_ansible_collections_doc/ibm_zos_core/docs/source/modules/zos_tso_command.html>`_ module used to issue the RACF commands.
-* :ref:`unquarantine_user` playbook for removing the CONTAIN attribute.
+* To issue the RACF commands, see `ibm.ibm_zos_core.zos_tso_command <https://ibm.github.io/z_ansible_collections_doc/ibm_zos_core/docs/source/modules/zos_tso_command.html>`_ module.
+* To remove the CONTAIN attribute, use the :ref:`unquarantine_user` playbook.
 * Email notification playbooks that consume the ``set_stats`` data from this playbook.

@@ -62,7 +62,7 @@ group_name
 From the AAP job template
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-These variables must be defined on the AAP job template that launches the playbook:
+Ensure that you define these variables on the AAP job template that launches the playbook:
 
 security_alert_recipients
   List of email addresses that receive the alert notification.
@@ -124,7 +124,7 @@ Output
 
 The playbook produces two outputs:
 
-* An HTML email delivered to the configured security recipients, containing the alert details 
+* An HTML email delivered to the configured security recipients, contains the alert details 
   and the gathered RACF user context.
 
 * A run summary in the AAP job output showing the alert code, target user, hostname, status 
@@ -156,6 +156,6 @@ Notes
 See Also
 --------
 
-* ``1107_1108_group_auth_status`` rulebook that launches this playbook
-* `ibm.ibm_zos_core.zos_tso_command <https://ibm.github.io/z_ansible_collections_doc/ibm_zos_core/docs/source/modules/zos_tso_command.html>`_ module used to issue the LISTUSER command
-* `community.general.mail <https://docs.ansible.com/ansible/latest/collections/community/general/mail_module.html>`_ module used to send the notification
+* ``1107_1108_group_auth_status`` rulebook that launches this playbook.
+* To issue the the LISTUSER command, use the `ibm.ibm_zos_core.zos_tso_command <https://ibm.github.io/z_ansible_collections_doc/ibm_zos_core/docs/source/modules/zos_tso_command.html>`_ module.
+* To send the notification, use the `community.general.mail <https://docs.ansible.com/ansible/latest/collections/community/general/mail_module.html>`_ module.

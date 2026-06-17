@@ -133,7 +133,7 @@ Output
 
 The playbook produces two outputs:
 
-* An HTML email delivered to the configured security recipients, containing the alert details, 
+* An HTML email delivered to the configured security recipients, contain the alert details, 
   the ICH408I logon denial text, and the current password threshold.
 
 * A summary report in the AAP job log showing the alert code, user ID, hostname, parsed password 
@@ -166,6 +166,6 @@ See Also
 --------
 
 * ``1111_invalid_password_limit_exceeded`` rulebook that launches this playbook
-* `ibm.ibm_zos_core.zos_tso_command <https://ibm.github.io/z_ansible_collections_doc/ibm_zos_core/docs/source/modules/zos_tso_command.html>`_ module used to issue the SETROPTS LIST command
-* `community.general.mail <https://docs.ansible.com/ansible/latest/collections/community/general/mail_module.html>`_ module used to send the notification
+* To issue the SETROPTS LIST command, use the `ibm.ibm_zos_core.zos_tso_command <https://ibm.github.io/z_ansible_collections_doc/ibm_zos_core/docs/source/modules/zos_tso_command.html>`_ module.
+* To send the notification, use the `community.general.mail <https://docs.ansible.com/ansible/latest/collections/community/general/mail_module.html>`_ module.
 

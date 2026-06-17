@@ -135,7 +135,7 @@ Notes
 See Also
 --------
 
-* :ref:`quarantine_user` playbook for applying the CONTAIN attribute.
-* `ibm.ibm_zos_core.zos_tso_command <https://ibm.github.io/z_ansible_collections_doc/ibm_zos_core/docs/source/modules/zos_tso_command.html>`_ module used to issue RACF commands.
+* To apply the CONTAIN attribute, use :ref:`quarantine_user` playbook.
+* To issue RACF commands, use the `ibm.ibm_zos_core.zos_tso_command <https://ibm.github.io/z_ansible_collections_doc/ibm_zos_core/docs/source/modules/zos_tso_command.html>`_ module.
 * Email notification playbooks that consume the ``set_stats`` data from this playbook.
 * Security incident management procedures that govern when users can be unquarantined.

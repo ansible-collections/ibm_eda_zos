@@ -178,8 +178,7 @@ Notes
 See Also
 --------
 
-* EDA rulebooks that launch this playbook (e.g., ``1101_logon_by_unknown_user``, 
-  ``1103_superuser_logon``, ``1107_1108_group_auth_status``)
-* `community.general.mail <https://docs.ansible.com/ansible/latest/collections/community/general/mail_module.html>`_ module used to send the notification
-* :ref:`quarantine_user` and :ref:`remove_uid_access` playbooks that set command status via ``set_stats``
-* ``templates/racf_email_alert.html.j2`` Jinja2 template for the email body
+* EDA rulebooks that launch this playbook (e.g., ``1101_logon_by_unknown_user``, ``1103_superuser_logon``, ``1107_1108_group_auth_status``)
+* To send the notification, see the `community.general.mail <https://docs.ansible.com/ansible/latest/collections/community/general/mail_module.html>`_ module.
+* To set status command through ``set_stats``, see the :ref:`quarantine_user`, and :ref:`remove_uid_access` playbooks. 
+* Use ``templates/racf_email_alert.html.j2`` Jinja2 template for the email body.

@@ -218,7 +218,7 @@ Notes
 
 * The rulebook runs continuously, monitoring the Kafka topic for new events.
 * Each event is processed independently. There is no correlation window or timeout.
-* Ensure that you have instaleed the zsecure filter plugin in the decision environment for the condition to evaluate correctly.
+* Ensure that you have installed the zsecure filter plugin in the decision environment for the condition to evaluate correctly.
 * Before you activate the rulebook, ensure that the referenced AAP work template exists.
 * System clocks should be synchronised between Kafka, AAP and z/OS for accurate event timestamps.
 
