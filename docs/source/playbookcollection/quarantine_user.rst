@@ -127,10 +127,10 @@ Notes
   until the attribute is removed.
 
 
-See Also
+See also
 --------
 
-* EDA rulebooks that launch this playbook (e.g., ``1101_logon_by_unknown_user``).
+* :ref: `1101_logon_by_unknown_user`_ rulebook that launch this playbook.
 * To issue the RACF commands, see `ibm.ibm_zos_core.zos_tso_command <https://ibm.github.io/z_ansible_collections_doc/ibm_zos_core/docs/source/modules/zos_tso_command.html>`_ module.
 * To remove the CONTAIN attribute, use the :ref:`unquarantine_user` playbook.
 * Email notification playbooks that consume the ``set_stats`` data from this playbook.

@@ -122,7 +122,7 @@ Notes
   :ref:`quarantine_user` playbook that accepts return codes up to 4.
 * The NOCONTAIN parameter removes the containment restriction, while RESUME restores the user's 
   ability to log on and access resources.
-* This playbook is the counterpart to :ref:`quarantine_user` and should only be executed after 
+* This playbook is the counterpart to :ref:`quarantine_user`_ and should only be executed after 
   proper security review and approval.
 * The ``set_stats`` data is available to subsequent playbooks in the same workflow, enabling 
   notification playbooks to include the unquarantine status in alert emails.
@@ -135,7 +135,7 @@ Notes
 See Also
 --------
 
-* To apply the CONTAIN attribute, use :ref:`quarantine_user` playbook.
+* To apply the CONTAIN attribute, use :ref:`quarantine_user`_ playbook.
 * To issue RACF commands, use the `ibm.ibm_zos_core.zos_tso_command <https://ibm.github.io/z_ansible_collections_doc/ibm_zos_core/docs/source/modules/zos_tso_command.html>`_ module.
 * Email notification playbooks that consume the ``set_stats`` data from this playbook.
 * Security incident management procedures that govern when users can be unquarantined.
