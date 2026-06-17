@@ -17,11 +17,11 @@ for both the :term:`control node<Control node>` and the
 Collection requirements
 -----------------------
 
-This is a validated content collection that is designed to be customizable, which means that there are no strict dependencies.
-The collection provides samples that users can adapt the collection to their own specific environments. 
-This documentation provides the dependencies for what the collection uses out of the box as an example configuration. 
+This is a validated content collection that is designed to be customizable, with no strict dependencies.
+The collection provides sample configurations that users can adapt the collection to their specific environments. 
+This documentation describes the dependencies required to use the collection out of the box. 
 
-The dependency matrix lists the minimum component versions for each version of the collection became generally available (GA) 
+The dependency matrix lists the minimum component versions for each collection that became generally available (GA) 
 for both, the control node and managed node. 
 
 

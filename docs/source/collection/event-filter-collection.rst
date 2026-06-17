@@ -26,7 +26,7 @@ Synopsis
   This ensures the data is in the ideal format by bringing valuable attributes like usernames, group names, etc. 
   to the top level to easily use for your rule conditions.
 
-* The event filter currently supports zSecure pre-defined user related alerts. For more information, see `User alerts`_.
+* The event filter currently supports zSecure pre-defined user related alerts. For more information, see `User alerts<https://www.ibm.com/docs/en/szs/3.1.0?topic=alerts-user`_.
 
 Parameters
 -----------
@@ -112,11 +112,11 @@ Input and output examples
 
 The event filter expects events following a similar structure below:
 
-* The message attribute containing the raw alert message with the actual alert text enclosed in double quotes 
-  Once the raw alert message is extracted, the filter will gather additional fields from the alert message.
-* The metadata attribute containing a comma-separated string with hostname as the first value 
+* The message attribute contains the raw alert message with the actual alert text enclosed in double quotes. Once the raw alert message is extracted,
+  the filter gathers additional fields from the alert message.
+* The metadata attribute contains a comma-separated string with hostname as the first value.
 * The filter returns an event dictionary with additional extracted fields added to the original event or returns the original event unchanged if processing fails. 
-* If the attribute does not exist in the alert message, it will return with a null result
+* If the attribute does not exist in the alert message, it returns with a null.
 
 Example for alert code C2P1101I: 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -197,12 +197,3 @@ After event filter:
 .. note::
 
     Currently, only **kafka** is supported as the event source and events from other sources pass through as unchanged.
-
-
-
-.. .............................................................................
-.. Global Links
-.. .............................................................................
-
-.. _User alerts:
-.. https://www.ibm.com/docs/en/szs/3.1.0?topic=alerts-user
