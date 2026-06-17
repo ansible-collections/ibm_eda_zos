@@ -13,7 +13,7 @@ Event filter
 Event filters are defined as Python code and distributed as collections.
 To help users get started quickly, Ansible provides the ``ansible.eda`` collection with a set of common filters.
 
-You can explore the collection here: https://galaxy.ansible.com/ui/repo/published/ansible/eda/content/.
+You can explore the collection here: `Ansible Galaxy <https://galaxy.ansible.com/ui/repo/published/ansible/eda/content/>`_.
 
 Event filters can be chained one after the other, and the updated data is
 sent from one filter to the next.
@@ -26,7 +26,7 @@ Synopsis
   This ensures the data is in the ideal format by bringing valuable attributes like usernames, group names, etc. 
   to the top level to easily use for your rule conditions.
 
-* The event filter currently supports zSecure pre-defined user related alerts. For more information, see `User alerts<https://www.ibm.com/docs/en/szs/3.1.0?topic=alerts-user`_.
+* The event filter currently supports zSecure pre-defined user related alerts. For more information, see `User alerts <https://www.ibm.com/docs/en/szs/3.1.0?topic=alerts-user>`_.
 
 Parameters
 -----------
