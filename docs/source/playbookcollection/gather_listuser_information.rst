@@ -156,6 +156,6 @@ Notes
 See also
 --------
 
-* :ref:`1107_1108_group_auth_status`_ rulebook that launches this playbook.
+* :ref:`1107_1108_group_auth_status` rulebook that launches this playbook.
 * To issue the the LISTUSER command, use the `ibm.ibm_zos_core.zos_tso_command <https://ibm.github.io/z_ansible_collections_doc/ibm_zos_core/docs/source/modules/zos_tso_command.html>`_ module.
 * To send the notification, use the `community.general.mail <https://docs.ansible.com/ansible/latest/collections/community/general/mail_module.html>`_ module.
