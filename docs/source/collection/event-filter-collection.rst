@@ -21,7 +21,7 @@ Synopsis
 * The event filter currently supports zSecure pre-defined user related alerts. For more information, see `User alerts <https://www.ibm.com/docs/en/szs/3.1.0?topic=alerts-user>`_.
 
 Parameters
------------
+----------
 
 **event_source**
       Name of the event source. Currently, supporting "kafka", otherwise it defaults to None and return the event without any changes.
@@ -52,7 +52,7 @@ Examples
 
 
 Attributes
--------------
+----------
 
 The filter extracts and adds the following attributes to the event:
 
