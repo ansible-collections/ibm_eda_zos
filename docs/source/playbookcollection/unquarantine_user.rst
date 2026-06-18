@@ -25,7 +25,6 @@ attribute and resume normal access for a previously quarantined user. The playbo
 change by listing the user's attributes and sets status information for downstream notification 
 processes.
 
-
 Variables
 ---------
 
