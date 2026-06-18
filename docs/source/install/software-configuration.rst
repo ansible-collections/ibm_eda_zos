@@ -50,7 +50,7 @@ Before you begin the configuration:
 
 4. Gather all necessary credentials and connection details.
 
-.. warning::
+.. note::
    Feel free to make any changes to the playbooks and rulebooks to adapt them to your specific environment requirements.
 
 Step 1: Obtain the collection
