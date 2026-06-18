@@ -106,7 +106,7 @@ set_command_message
   | **type**: str
 
 
-Process Walkthrough
+Process walkthrough
 -------------------
 
 The playbook runs in two phases.
@@ -175,7 +175,7 @@ Notes
   playbooks like :ref:`quarantine_user`, or :ref:`remove_uid_access`.
 
 
-See Also
+See also
 --------
 
 * The EDA rulebooks that launch this playbook (e.g., :ref:`1101_logon_by_unknown_user`, :ref:`1103_superuser_logon`, :ref:`1107_1108_group_auth_status`).

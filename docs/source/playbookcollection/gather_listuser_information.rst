@@ -90,7 +90,7 @@ system_environment
   | **type**: dict
 
 
-Process Walkthrough
+Process walkthrough
 -------------------
 
 The playbook runs in three phases.

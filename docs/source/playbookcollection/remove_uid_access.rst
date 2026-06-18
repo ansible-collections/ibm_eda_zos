@@ -61,7 +61,7 @@ system_environment
   | **type**: dict
 
 
-Process Walkthrough
+Process walkthrough
 -------------------
 
 The playbook runs in two phases based on whether a valid user ID is provided.

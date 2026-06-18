@@ -57,7 +57,7 @@ system_environment
   | **type**: dict
 
 
-Process Walkthrough
+Process walkthrough
 -------------------
 
 The playbook runs in two phases based on whether a valid user ID is provided.
@@ -132,7 +132,7 @@ Notes
   playbook to execute, as it restores access to a previously restricted user.
 
 
-See Also
+See also
 --------
 
 * To apply the CONTAIN attribute, use :ref:`quarantine_user` playbook.

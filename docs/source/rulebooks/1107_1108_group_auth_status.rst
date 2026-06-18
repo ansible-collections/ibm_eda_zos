@@ -135,7 +135,7 @@ Action
 
 Launches the AAP job template zSecure - Respond to Group Authority Change in the Default organization. The matched event is passed to the job template through ansible_eda.event. The response workflow performed by the job template is documented on the corresponding playbook page in this collection.
 
-Event Structure
+Event structure
 ---------------
 
 Event (C2P1107I or C2P1108I)

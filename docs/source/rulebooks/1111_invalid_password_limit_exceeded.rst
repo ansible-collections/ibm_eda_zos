@@ -162,7 +162,7 @@ Action
 
 Launches the AAP job template zSecure - Respond to Password Limit Exceeded in the Default organization. Both matched events are passed to the job template through ansible_eda.events.a and ansible_eda.events.b. The response workflow performed by the job template is documented on the corresponding playbook page in this collection.
 
-Event Structure
+Event structure
 ---------------
 
 Event A (zSecure Alert C2P1111I)

@@ -135,7 +135,7 @@ Action
 
 Launches the AAP workflow template 'EDA Alert 1103 Response Workflow' in the Default organization. The matched event is passed to the workflow template through ansible_eda.event. The response performed by the workflow template is documented on the corresponding playbook page in this collection.
 
-Event Structure
+Event structure
 ---------------
 
 Event (C2P1103I)
