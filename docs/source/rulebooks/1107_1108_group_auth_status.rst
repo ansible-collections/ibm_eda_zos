@@ -270,7 +270,7 @@ Events not matching
 * Verify whether the alert_code field value is exact (case sensitive).
 * Check that the filter plugin is parsing events correctly.
 
-See Also
+See also
 --------
 
 * Playbook suggestion, see :ref:`gather_listuser_information`.

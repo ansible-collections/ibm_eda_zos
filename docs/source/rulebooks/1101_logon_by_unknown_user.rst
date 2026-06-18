@@ -194,7 +194,7 @@ Create a rulebook activation in Ansible Automation Platform with the following a
    cafile: "/etc/kafka/certs/ca-cert.pem"
 
 Example 2: Testing the Rule
-----------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 To test the rulebook, publish a sample event to your Kafka topic.
 
