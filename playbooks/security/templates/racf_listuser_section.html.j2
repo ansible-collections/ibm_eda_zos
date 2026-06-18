@@ -1,0 +1,26 @@
+<h4>RACF User Information (LISTUSER Summary)</h4>
+{% if lu_user_id | default('UNKNOWN') == 'UNKNOWN' and lu_joined == 'LISTUSER command failed or user not found' %}
+<div class="warning-box">
+  <p>⚠️ LISTUSER command failed or user not found.</p>
+</div>
+{% else %}
+<table>
+  <tr><th>Field</th><th>Value</th></tr>
+  <tr><td>User ID</td><td>{{ lu_user_id | default('UNKNOWN') }}</td></tr>
+  <tr><td>Owner</td><td>{{ lu_owner | default('UNKNOWN') }}</td></tr>
+  <tr><td>Default Group</td><td>{{ lu_default_group | default('UNKNOWN') }}</td></tr>
+  {% if lu_created is defined and lu_created != 'UNKNOWN' %}
+  <tr><td>Created</td><td>{{ lu_created }}</td></tr>
+  {% endif %}
+  {% if lu_revoke_date is defined and lu_revoke_date != 'NONE' %}
+  <tr><td>Revoke Date</td><td>{{ lu_revoke_date }}</td></tr>
+  {% endif %}
+  {% if lu_attributes is defined and lu_attributes != 'UNKNOWN' %}
+  <tr><td>Attributes</td><td>{{ lu_attributes }}</td></tr>
+  {% endif %}
+</table>
+{% if show_listuser_output | default(true) | bool %}
+<h4>Full LISTUSER Output</h4>
+<pre>{{ lu_joined }}</pre>
+{% endif %}
+{% endif %}
