@@ -149,4 +149,4 @@ See also
 .. .............................................................................
 
 .. _SETROPTS JES(BATCHALLRACF):
-.. https://www.ibm.com/docs/en/zos/3.2.0?topic=racf-setropts-options
+..  https://www.ibm.com/docs/en/zos/3.2.0?topic=racf-setropts-options
