@@ -24,7 +24,6 @@ Parameters
 -----------
 
 .. code-block:: text
-
 **event_source**
       Name of the event source. Currently, supporting "kafka", otherwise it defaults to None and return the event without any changes.
    
@@ -161,7 +160,7 @@ Before event filter:
   "headerName":"zOS-SYSLOG-Console:1.0.0",
   "hasHeaderTopic":"true",
   "metadata":"sample_host.ibm.com,SYSLOG,1.0.0,zOS-SYSLOG-Console,ZOS_HOST-SYSLOG,-0400,XESDEV,ZOS_HOST,1774419235120",
-  "message": "NC,002B,26083 23.13.55.120 -0700,ZOS_HOST,TSU00121,USRT004,00000000000000000000000000000000,00000210,USRT004 ,80,\" C2P1105I System authority SPECIAL granted to C##BMR2 by C##BMR1\"
+  "message": "NC,002B,26083 23.13.55.120 -0700,ZOS_HOST,TSU00121,USRT004,00000000000000000000000000000000,00000210,USRT004 ,80,\" C2P1105I System authority SPECIAL granted to C##BMR2 by C##BMR1\""
   }
 
 After event filter:
