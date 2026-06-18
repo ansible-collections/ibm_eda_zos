@@ -36,4 +36,4 @@ its critical dates, and which type of support it is currently eligible for.
 .. Global Links
 .. .............................................................................
 .. _1.0.x changelogs:
-    https://github.com/ansible-collections/ibm_z_solution/blob/v2.0.0/CHANGELOG.rst
+    https://github.com/ansible-collections/ibm_eda_zos/blob/v1.0.0/CHANGELOG.rst
