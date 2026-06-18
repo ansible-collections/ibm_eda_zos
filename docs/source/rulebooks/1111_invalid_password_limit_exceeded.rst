@@ -33,9 +33,11 @@ Rulebook
            port: "{{ kafka_port }}"
            security_protocol: "{{ security_protocol }}"
            ssl_cafile: "{{ cafile }}"
+
          filters:
-           - ibm.ibm_eda_zos:
+           - ibm.ibm_eda_zos.security_alerts:
                event_source: "kafka"
+
      rules:
        - name: Handle Invalid Password Threshold Exceeded Alert (C2P1111I)
          condition:
@@ -99,7 +101,7 @@ Connects to a Kafka broker to consume zSecure alert messages and RACF system mes
 Filters
 -------
 
-**ibm.ibm_eda_zos**
+**ibm.ibm_eda_zos.security_alerts**
 
 Filter plugin that parses and structures zSecure alert messages and RACF system messages from Kafka events. Without this filter the rulebook conditions will not match because the fields they reference do not exist in the raw Kafka payload.
 

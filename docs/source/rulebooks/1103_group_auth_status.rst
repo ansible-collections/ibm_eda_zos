@@ -32,11 +32,11 @@ Rulebook
            host: "{{ kafka_host }}"
            port: "{{ kafka_port }}"
            security_protocol: "{{ security_protocol }}"
-           cafile: "{{ ssl_cafile }}"
+           ssl_cafile: "{{  cafile}}"
            check_hostname: true
 
          filters:
-           - ibm.ibm_z_solutions.zsecure:
+           - ibm.ibm_eda_zos.security_alerts:
                event_source: "kafka"
 
      rules:
@@ -96,7 +96,7 @@ Connects to a Kafka broker to consume zSecure alert messages.
 Filters
 -------
 
-**ibm.ibm_eda_zos**
+**ibm.ibm_eda_zos.security_alerts**
 
 Filter plugin that parses and structures zSecure alert messages from Kafka events. Without this filter the rulebook condition will not match because the alert code field will not exist in the raw payload.
 
