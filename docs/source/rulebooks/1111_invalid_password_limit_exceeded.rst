@@ -12,7 +12,7 @@
 
 
 Synopsis
-========
+--------
 
 This rulebook monitors RACF password threshold breach events from zSecure alerts delivered through Kafka. It uses event correlation to match the zSecure alert (C2P1111I) with the subsequent RACF system message (ICH408I), confirming that a real password related security incident has occurred.
 
@@ -21,7 +21,7 @@ When both events are matched within the correlation window, the rulebook trigger
 The correlation between two events reduces false positives by requiring confirmation from both zSecure and RACF before any automated action is taken.
 
 Rulebook
-========
+-------
 
 .. code-block:: yaml
 
@@ -62,11 +62,10 @@ Rulebook
              organization: "Default"
 
 Parameters
-==========
+----------
 
 Sources
--------
-
+~~~~~~
 **kafka**
 
 Connects to a Kafka broker to consume zSecure alert messages and RACF system messages.
@@ -121,6 +120,7 @@ Rules
 **Handle Invalid Password Threshold Exceeded Alert**
 
 Alert codes monitored:
+~~~~~~~~~~~~~~~~~~~~~~~
 
 * **C2P1111I**: zSecure alert indicating password threshold exceeded.
 * **ICH408I**: RACF message confirming logon or job initiation failure.
@@ -163,10 +163,10 @@ Action
 Launches the AAP job template zSecure - Respond to Password Limit Exceeded in the Default organization. Both matched events are passed to the job template through ansible_eda.events.a and ansible_eda.events.b. The response workflow performed by the job template is documented on the corresponding playbook page in this collection.
 
 Event Structure
-===============
+---------------
 
 Event A (zSecure Alert C2P1111I)
---------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: json
 
@@ -184,7 +184,7 @@ Event A (zSecure Alert C2P1111I)
    }
 
 Event B (RACF ICH408I Message)
--------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~``
 
 .. code-block:: json
 
@@ -200,7 +200,7 @@ Event B (RACF ICH408I Message)
    }
 
 Event A body fields
--------------------
+~~~~~~~~~~~~~~~~~~
 
 * **alert_code**: the zSecure alert code (C2P1111I).
 * **alert_message**: descriptive message about the password threshold breach.
@@ -209,14 +209,14 @@ Event A body fields
 * **timestamp**: ISO 8601 timestamp of the alert.
 
 Event B body fields
--------------------
+~~~~~~~~~~~~~~~~~~~
 
 * **message**: the RACF ICH408I system message containing the user ID and failure reason.
 * **hostname**: the z/OS system where the logon failure occurred.
 * **timestamp**: ISO 8601 timestamp of the RACF message.
 
 Variables
-=========
+---------
 
 When you activate the rulebook in Ansible Automation Platform, the following variables are defined:
 
@@ -229,10 +229,10 @@ When you activate the rulebook in Ansible Automation Platform, the following var
    cafile: "/path/to/ca-cert.pem"
 
 Examples
-========
+--------
 
 Example 1: Basic Activation
----------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Create a rulebook activation in Ansible Automation Platform with the following activation variables:
 
@@ -245,7 +245,7 @@ Create a rulebook activation in Ansible Automation Platform with the following a
    cafile: "/etc/kafka/certs/ca-cert.pem"
 
 Example 2: Testing Event Correlation
--------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 To test the rulebook, publish both events to your Kafka topic with appropriate timing.
 
@@ -282,7 +282,7 @@ To test the rulebook, publish both events to your Kafka topic with appropriate t
         --topic zsecure-alerts
 
 Example 3: Adjusting the Correlation Timeout
----------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 If your environment needs a longer correlation window, change the timeout value:
 
@@ -301,7 +301,7 @@ If your environment needs a longer correlation window, change the timeout value:
          timeout: 120
 
 Notes
-=====
+----
 
 * The rulebook runs continuously, monitoring the Kafka topic for new events.
 * Event correlation is stateful and maintains event history within the timeout window.
@@ -311,10 +311,10 @@ Notes
 * System clocks should be synchronised between Kafka, AAP and z/OS for accurate timestamp comparison.
 
 Troubleshooting
-===============
+--------------
 
 Rulebook not triggering
------------------------
+~~~~~~~~~~~~~~~~~~~~~~~``
 
 * Verify whether both Event A and Event B are published to Kafka.
 * Verify whether the event format matches the expected structure for both events.
@@ -323,7 +323,7 @@ Rulebook not triggering
 * Validate timestamp fields are present in event metadata.
 
 Event correlation timeout
---------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 * Verify whether the system clock synchronisation between Kafka and AAP.
 * Increase the timeout value if messages are delayed in your pipeline.
@@ -331,7 +331,7 @@ Event correlation timeout
 * Review Kafka consumer lag metrics.
 
 Events not matching
--------------------
+~~~~~~~~~~~~~~~~~~~
 
 * Enable verbose logging in activation settings.
 * Verify whether the alert_code field in Event A.
@@ -339,7 +339,7 @@ Events not matching
 * Verify whether the filter plugin is correctly parsing events.
 
 See also
-========
+--------
 
 - Playbook suggestion, see :ref:`gather_password_policy_information`.
 - `Ansible Automation Platform - Getting started as an automation developer <https://docs.redhat.com/en/documentation/red_hat_ansible_automation_platform/2.6/get_started-assembly_gs_auto_dev>`_.

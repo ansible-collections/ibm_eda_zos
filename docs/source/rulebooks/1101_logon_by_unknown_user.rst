@@ -25,7 +25,6 @@ Rulebook
 
 .. code-block:: yaml
 
-   ---
    - name: Rule to handle alert 1101 - Logon of an unknown user
      hosts: all
      sources:
