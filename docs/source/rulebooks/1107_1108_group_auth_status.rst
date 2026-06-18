@@ -33,8 +33,9 @@ Rulebook
            port: "{{ kafka_port }}"
            security_protocol: "{{ security_protocol }}"
            ssl_cafile: "{{ cafile }}"
+
          filters:
-           - ibm.ibm_eda_zos:
+           - ibm.ibm_eda_zos.security_alerts:
                event_source: "kafka"
      rules:
        - name: Handle Group Authority Granted or Removed (C2P1107I, C2P1108I)
@@ -88,7 +89,7 @@ Connects to a Kafka broker to consume zSecure alert messages.
 Filters
 -------
 
-**ibm.ibm_eda_zos**
+**ibm.ibm_eda_zos.security_alerts**
 
 Filter plugin that parses and structures zSecure alert messages from Kafka events. Without this filter the rulebook condition will not match because the alert code field will not exist in the raw payload.
 
@@ -147,7 +148,6 @@ Event (C2P1107I or C2P1108I)
        "hostname": "ZSYS01",
        "target_user": "USER123",
        "group_name": "SYSPROG",
-       "authority_level": "USE",
        "timestamp": "2024-01-15T10:30:00Z"
      },
      "meta": {
@@ -163,7 +163,6 @@ Event body fields
 * **hostname**: the z/OS system where the event occurred.
 * **target_user**: the RACF user ID affected by the change.
 * **group_name**: the RACF group name involved in the change.
-* **authority_level**: the level of authority granted or removed.
 * **timestamp**: ISO 8601 timestamp of the alert.
 
 Variables
@@ -211,7 +210,6 @@ Publish a C2P1107I event:
        "hostname": "ZSYS01",
        "target_user": "TESTUSER",
        "group_name": "SYSPROG",
-       "authority_level": "USE",
        "timestamp": "2024-01-15T10:30:00Z"
      },
      "meta": { "received_at": "2024-01-15T10:30:01Z" }
