@@ -165,7 +165,7 @@ Notes
 See also
 --------
 
-* :ref:`1111_invalid_password_limit_exceeded` rulebook that launches this playbook
+* :ref:`1111_invalid_password_limit_exceeded` rulebook that launches this playbook.
 * To issue the SETROPTS LIST command, use the `ibm.ibm_zos_core.zos_tso_command <https://ibm.github.io/z_ansible_collections_doc/ibm_zos_core/docs/source/modules/zos_tso_command.html>`_ module.
 * To send the notification, use the `community.general.mail <https://docs.ansible.com/ansible/latest/collections/community/general/mail_module.html>`_ module.
 

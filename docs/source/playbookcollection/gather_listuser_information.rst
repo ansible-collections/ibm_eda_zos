@@ -134,8 +134,8 @@ The playbook produces two outputs:
 Prerequisites
 -------------
 
-* The Jinja2 template file must be present in the playbook templates directory.
-* The AAP job template must include a Machine credential for z/OS SSH access.
+* Ensure that the Jinja2 template file is present in the playbook templates directory.
+* Ensure that the AAP job template includes a Machine credential for z/OS SSH access.
 * The z/OS user running the playbook must be permitted to issue the TSO command.
 * The SMTP server must be reachable from the AAP controller.
 * The configured email recipients must be valid mailboxes.

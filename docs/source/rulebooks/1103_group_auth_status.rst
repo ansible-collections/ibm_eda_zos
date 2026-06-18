@@ -2,11 +2,14 @@
 .. © Copyright IBM Corporation 2020, 2026                                    .
 .. ...........................................................................
 
-=====================================
-1103_group_auth_status
-=====================================
 
-Monitor zSecure alerts from Kafka for logon of a user with uid(0).
+1103_group_auth_status - Monitor zSecure alerts from Kafka for logon of a user with uid(0).
+====================================
+
+.. contents::
+   :local:
+   :depth: 1
+
 
 Synopsis
 ========

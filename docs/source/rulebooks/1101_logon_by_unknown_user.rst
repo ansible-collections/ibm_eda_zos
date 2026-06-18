@@ -2,11 +2,14 @@
 .. © Copyright IBM Corporation 2020, 2026                                    .
 .. ...........................................................................
 
-=====================================
-1101_logon_by_unknown_user
+
+1101_logon_by_unknown_user - Monitor zSecure alerts from Kafka for logon by an unknown user.
 =====================================
 
-Monitor zSecure alerts from Kafka for logon by an unknown user.
+.. contents::
+   :local:
+   :depth: 1
+
 
 Synopsis
 --------
@@ -243,5 +246,5 @@ Events not matching
 See Also
 --------
 
--  Playbook suggestions, see :ref:`setr_jes_batchallracf` and :ref:`send_alert_email`.
+-  Playbook suggestions, see :ref:`setr_jes_batchallracf`, and :ref:`send_alert_email`.
 - `Ansible Automation Platform - Getting started as an automation developer <https://docs.redhat.com/en/documentation/red_hat_ansible_automation_platform/2.6/get_started-assembly_gs_auto_dev>`_.

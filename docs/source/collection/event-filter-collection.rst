@@ -10,18 +10,10 @@
 Event filter
 ============
 
-Event filters are defined as Python code and distributed as collections.
-To help users get started quickly, Ansible provides the ``ansible.eda`` collection with a set of common filters.
-
-You can explore the collection here: `Ansible Galaxy <https://galaxy.ansible.com/ui/repo/published/ansible/eda/content/>`_.
-
-Event filters can be chained one after the other, and the updated data is
-sent from one filter to the next.
-
 Synopsis 
 --------
 
-* The IBM Event-Driven Ansible collection provides a custom event filter, referred to as ibm.ibm_eda_zos.security_alerts to preprocess 
+* The IBM Event-Driven Ansible collection provides a custom event filter, referred to as ``ibm.ibm_eda_zos.security_alerts`` to preprocess 
   event data before it is evaluated by the rule engine.  
   This ensures the data is in the ideal format by bringing valuable attributes like usernames, group names, etc. 
   to the top level to easily use for your rule conditions.
@@ -158,7 +150,7 @@ After event filter:
      target_user: null
 
 Example for alert code C2P1105I:
-------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Before event filter: 
 ~~~~~~~~~~~~~~~~~~~

@@ -6,7 +6,7 @@
 
 
 unquarantine_user -- Remove CONTAIN attribute and resume user access
-=====================================================================
+====================================================================
 
 .. contents::
    :local:
@@ -122,7 +122,7 @@ Notes
   :ref:`quarantine_user` playbook that accepts return codes up to 4.
 * The NOCONTAIN parameter removes the containment restriction, while RESUME restores the user's 
   ability to log on and access resources.
-* This playbook is the counterpart to :ref:`quarantine_user`_ and should only be executed after 
+* This playbook is the counterpart to :ref:`quarantine_user` and should only be executed after 
   proper security review and approval.
 * The ``set_stats`` data is available to subsequent playbooks in the same workflow, enabling 
   notification playbooks to include the unquarantine status in alert emails.

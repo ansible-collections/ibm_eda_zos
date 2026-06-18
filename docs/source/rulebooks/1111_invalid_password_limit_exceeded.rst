@@ -2,11 +2,14 @@
 .. © Copyright IBM Corporation 2020, 2026                                    .
 .. ...........................................................................
 
-====================================
-1111_invalid_password_limit_exceeded
+
+1111_invalid_password_limit_exceeded - Monitor zSecure alerts from Kafka for password threshold exceeded alert.
 ====================================
 
-Monitor zSecure alerts from Kafka for password threshold exceeded alert.
+.. contents::
+   :local:
+   :depth: 1
+
 
 Synopsis
 ========
