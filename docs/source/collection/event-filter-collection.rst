@@ -129,8 +129,8 @@ Before event filter:
    {
      "headerName": "zOS-SYSLOG-Console:1.0.0",
      "hasHeaderTopic": "true",
-     "metadata": "ECXXXXXA.vmec.svl.ibm.com,SYSLOG,1.0.0,zOS-SYSLOG-Console,ECXXXXXA-SYSLOG,-0400,XESDEV,ECXXXXXA,1774419235120",
-     "message": "NC,002B,26083 23.13.55.120 -0700,ECXXXXXA,TSU00121,USRT004 ,00000000000000000000000000000000,00000210,USRT004 ,80,\" C2P1101I LOGON BY UNKNOWN USER * JOB TESTJOB\""
+     "metadata": "sample_host.ibm.com,SYSLOG,1.0.0,zOS-SYSLOG-Console,ZOS_HOST-SYSLOG,-0400,XESDEV,ZOS_HOST,1774419235120",
+     "message": "NC,002B,26083 23.13.55.120 -0700,ZOS_HOST,TSU00121,USRT004 ,00000000000000000000000000000000,00000210,USRT004 ,80,\" C2P1101I LOGON BY UNKNOWN USER * JOB TESTJOB\""
    }
 
 
@@ -146,15 +146,15 @@ After event filter:
      group_name: null
      hasHeaderTopic: 'true'
      headerName: zOS-SYSLOG-Console:1.0.0
-     hostname: ECXXXXXA.vmec.svl.ibm.com
+     hostname: sample_host.ibm.com
      ip_address: null
      job_name: TESTJOB
      message: >-
-       NC,002B,26083 23.13.55.120 -0700,ECXXXXXA,TSU00121,USRT004
+       NC,002B,26083 23.13.55.120 -0700,ZOS_HOST,TSU00121,USRT004
        ,00000000000000000000000000000000,00000210,USRT004 ,80," C2P1101I LOGON BY
        UNKNOWN USER * JOB TESTJOB"
      metadata: >-
-       ECXXXXXA.vmec.svl.ibm.com,SYSLOG,1.0.0,zOS-SYSLOG-Console,ECXXXXXA-SYSLOG,-0400,XESDEV,ECXXXXXA,1774419235120
+       sample_host.ibm.com,SYSLOG,1.0.0,zOS-SYSLOG-Console,ZOS_HOST-SYSLOG,-0400,XESDEV,ZOS_HOST,1774419235120
      target_user: null
 
 Example for alert code C2P1105I:
@@ -167,8 +167,8 @@ Before event filter:
   {
   "headerName":"zOS-SYSLOG-Console:1.0.0",
   "hasHeaderTopic":"true",
-  "metadata":"ECXXXXXA.vmec.svl.ibm.com,SYSLOG,1.0.0,zOS-SYSLOG-Console,ECXXXXXA-SYSLOG,-0400,XESDEV,ECXXXXXA,1774419235120",
-  "message":"NC,002B,26083 23.13.55.120 -0700,ECXXXXXA,TSU00121,USRT004 ,00000000000000000000000000000000,00000210,USRT004 ,80,\" C2P1105I System authority SPECIAL granted to C##BMR2 by C##BMR1\"
+  "metadata":"sample_host.ibm.com,SYSLOG,1.0.0,zOS-SYSLOG-Console,ZOS_HOST-SYSLOG,-0400,XESDEV,ZOS_HOST,1774419235120",
+  "message":"NC,002B,26083 23.13.55.120 -0700,ZOS_HOST,TSU00121,USRT004 ,00000000000000000000000000000000,00000210,USRT004 ,80,\" C2P1105I System authority SPECIAL granted to C##BMR2 by C##BMR1\"
   }
 
 After event filter:
@@ -183,14 +183,14 @@ After event filter:
      group_name: null
      hasHeaderTopic: 'true'
      headerName: zOS-SYSLOG-Console:1.0.0
-     hostname: ECXXXXXA.vmec.svl.ibm.com
+     hostname: sample_host.ibm.com
      ip_address: null
      job_name: null
      message: >-
-       NC,002B,26083 23.13.55.120 -0700,ECXXXXXA,TSU00121,USRT004
+       NC,002B,26083 23.13.55.120 -0700,ZOS_HOST,TSU00121,USRT004
        ,00000000000000000000000000000000,00000210,USRT004 ,80," C2P1105I System authority SPECIAL granted to C##BMR2 by C##BMR1\"
      metadata: >-
-       ECXXXXXA.vmec.svl.ibm.com,SYSLOG,1.0.0,zOS-SYSLOG-Console,ECXXXXXA-SYSLOG,-0400,XESDEV,ECXXXXXA,1774419235120
+       sample_host.ibm.com,SYSLOG,1.0.0,zOS-SYSLOG-Console,ZOS_HOST-SYSLOG,-0400,XESDEV,ZOS_HOST,1774419235120
      target_user: C##BMR2
 
 
