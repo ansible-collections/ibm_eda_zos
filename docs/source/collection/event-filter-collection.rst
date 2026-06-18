@@ -154,6 +154,7 @@ Example for alert code C2P1105I:
 
 Before event filter: 
 ~~~~~~~~~~~~~~~~~~~
+
 .. code-block:: json
   
   {
