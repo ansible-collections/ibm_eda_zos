@@ -25,7 +25,7 @@ Parameters
 
 .. code-block:: text
 
-   **event_source**
+**event_source**
       Name of the event source. Currently, supporting "kafka", otherwise it defaults to None and return the event without any changes.
    
    :required: True 
