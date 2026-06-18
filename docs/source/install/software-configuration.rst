@@ -136,8 +136,8 @@ Create projects in both controllers to access the collection content.
 Automation Controller Project
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-1. Navigate to **Resources → Projects**.
-2. Click **Add**.
+1. Navigate to **Automation Controller → Projects**.
+2. Click **Create project**.
 3. Configure the project:
    
    * **Name:** IBM EDA z/OS Collection
@@ -153,7 +153,7 @@ Automation Controller Project
 Event-Driven Ansible Controller Project
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-1. Navigate to **Projects**
+1. Navigate to **Event-Driven Ansible → Projects**
 2. Click **Create project**
 3. Configure the project:
    
@@ -176,8 +176,8 @@ Configure the Automation Controller to execute playbooks in response to events.
 Create a host
 ^^^^^^^^^^^^^
 
-1. Navigate to **Resources → Hosts**
-2. Click **Add**
+1. Navigate to **Automation Controller → Hosts**
+2. Click **Create host**
 3. Configure the host:
    
    * **Name:** Your z/OS managed node hostname
@@ -188,8 +188,8 @@ Create a host
 Create an Inventory
 ^^^^^^^^^^^^^^^^^^^^
 
-1. Navigate to **Resources → Inventories**
-2. Click **Add → Add inventory**
+1. Navigate to **Automation Controller → Inventories**
+2. Click **Create inventory → Create inventory**
 3. Configure the inventory:
    
    * **Name:** z/OS EDA Inventory
@@ -204,8 +204,8 @@ Create an Inventory
 Create a Job Template
 ^^^^^^^^^^^^^^^^^^^^^^
 
-1. Navigate to **Resources → Templates**
-2. Click **Add → Add job template**
+1. Navigate to **Automation Controller → Templates**
+2. Click **Create template → Create job template**
 3. Configure the job template:
 
    **Basic Information:**
@@ -214,7 +214,7 @@ Create a Job Template
    * **Job Type:** Run
    * **Inventory:** Select ``z/OS EDA Inventory``
    * **Project:** Select ``IBM EDA z/OS Collection``
-   * **Playbook:** ``playbooks/security/respond_to_1107_1108_group_authority.yml``
+   * **Playbook:** ``playbooks/security/<playbook_name>.yml``
    * **Credentials:** Select the z/OS machine credential
 
    **Extra Variables:**
@@ -250,7 +250,7 @@ Configure the Event-Driven Ansible Controller to listen for events and trigger a
 Create a Rulebook Activation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-1. Navigate to **Rulebook Activations**
+1. Navigate to **Event-Driven Ansible → Rulebook Activations**
 2. Click **Create rulebook activation**
 3. Configure the rulebook activation:
 
@@ -280,7 +280,7 @@ Create a Rulebook Activation
    
    .. code-block:: yaml
 
-      cafile: <path-to-ca-cert-file>
+      ssl_cafile: <path-to-ca-cert-file>
       kafka_host: <your-kafka-broker>
       kafka_port: <your-kafka-ssl-port>
       kafka_topic: <your-kafka-topic>
@@ -290,7 +290,7 @@ Create a Rulebook Activation
    
    .. code-block:: yaml
 
-      cafile: /etc/pki/tls/certs/kafka-ca.crt
+      ssl_cafile: /etc/pki/tls/certs/kafka-ca.crt
       kafka_host: kafka.example.com
       kafka_port: 9093
       kafka_topic: zsecure-alerts
