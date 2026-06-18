@@ -172,13 +172,13 @@ Notes
 * All output is written to the AAP job log. Restrict access to job logs if your security policy 
   requires it.
 * This playbook is typically the final step in a security workflow, executed after remediation 
-  playbooks like :ref:`quarantine_user` or :ref:`remove_uid_access`.
+  playbooks like :ref:`quarantine_user`, or :ref:`remove_uid_access`.
 
 
 See Also
 --------
 
-* The EDA rulebooks that launch this playbook (e.g., `1101_logon_by_unknown_user`, `1103_superuser_logon`, `1107_1108_group_auth_status`).
+* The EDA rulebooks that launch this playbook (e.g., :ref:`1101_logon_by_unknown_user`, :ref:`1103_superuser_logon`, :ref:`1107_1108_group_auth_status`).
 * To send the notification, see the `community.general.mail <https://docs.ansible.com/ansible/latest/collections/community/general/mail_module.html>`_ module.
 * To set status command through ``set_stats``, see the :ref:`quarantine_user`, and :ref:`remove_uid_access` playbooks. 
-* Use ``templates/racf_email_alert.html.j2`` Jinja2 template for the email body.
+* Use the ``templates/racf_email_alert.html.j2`` Jinja2 template for the email body.
