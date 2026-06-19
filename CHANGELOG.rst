@@ -48,9 +48,8 @@ Known Issues
   or non-standard alert formats may not be fully parsed.
 
   **Workaround**: For unsupported formats, you can use Ansible-supported operators
-  (like ``search``, ``match``) in rule conditions to identify specific alerts, and
-  Jinja2 filters (including Python string methods and ``regex_replace``) in the
-  action section to extract data for playbook variables.
+  in rule conditions to identify specific alerts, and Jinja2 filters (including 
+  Python string methods) in the action section to extract data for playbook variables.
 
   **Example Event Structure**
 
@@ -92,7 +91,6 @@ Known Issues
                  # dataset name (C##A.D.C##NEW.APF.LOAD) to pass to playbook
                  username: "{{ event.body.message.split('user')[1].strip().split()[0] }}"
                  dataset_name: "{{ event.body.message.split('data set')[1].strip().split()[0] }}"
-                 alert_code: "1204"
                  full_event: "{{ event }}"
 
   This approach allows you to handle any alert format by customizing the parsing

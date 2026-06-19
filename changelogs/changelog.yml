@@ -6,13 +6,13 @@ releases:
       - "**Alert Format Compatibility**: The *security_alerts* event filter extracts\nattributes
         based on user-specific zSecure alert message patterns. Some custom\nor non-standard
         alert formats may not be fully parsed.\n\n**Workaround**: For unsupported
-        formats, you can use Ansible-supported operators\n(like ``search``, ``match``)
-        in rule conditions to identify specific alerts, and\nJinja2 filters (including
-        Python string methods and ``regex_replace``) in the\naction section to extract
-        data for playbook variables.\n\n**Example Event Structure**\n\nBelow is an
-        example of an incoming Kafka event for alert \"Update on APF data set (1204)\":\n\n..
-        code-block:: json\n\n   {\n     \"headerName\": \"zOS-SYSLOG-Console:1.0.0\",\n
-        \    \"hasHeaderTopic\": \"true\",\n     \"metadata\": \"sample_host.ibm.com,SYSLOG,1.0.0,zOS-SYSLOG-Console,ZOS_HOST-SYSLOG,-0400,XESDEV,ZOS_HOST,1774419235120\",\n
+        formats, you can use Ansible-supported operators\nin rule conditions to identify
+        specific alerts, and Jinja2 filters (including \nPython string methods) in
+        the action section to extract data for playbook variables.\n\n**Example Event
+        Structure**\n\nBelow is an example of an incoming Kafka event for alert \"Update
+        on APF data set (1204)\":\n\n.. code-block:: json\n\n   {\n     \"headerName\":
+        \"zOS-SYSLOG-Console:1.0.0\",\n     \"hasHeaderTopic\": \"true\",\n     \"metadata\":
+        \"sample_host.ibm.com,SYSLOG,1.0.0,zOS-SYSLOG-Console,ZOS_HOST-SYSLOG,-0400,XESDEV,ZOS_HOST,1774419235120\",\n
         \    \"message\": \"NC,002B,26083 23.13.55.120 -0700,ZOS_HOST,TSU00121,USRT004
         ,00000000000000000000000000000000,00000210,USRT004 ,80,\\\" C2P1204I Update
         by user C##ASCH on APF data set C##A.D.C##NEW.APF.LOAD\\\"\"\n   }\n\n**Custom
@@ -29,9 +29,8 @@ releases:
         username (C##ASCH) and\n               # dataset name (C##A.D.C##NEW.APF.LOAD)
         to pass to playbook\n               username: \"{{ event.body.message.split('user')[1].strip().split()[0]
         }}\"\n               dataset_name: \"{{ event.body.message.split('data set')[1].strip().split()[0]
-        }}\"\n               alert_code: \"1204\"\n               full_event: \"{{
-        event }}\"\n\nThis approach allows you to handle any alert format by customizing
-        the parsing\nlogic in your rulebooks.\n"
+        }}\"\n               full_event: \"{{ event }}\"\n\nThis approach allows you
+        to handle any alert format by customizing the parsing\nlogic in your rulebooks.\n"
       major_changes:
       - Added security_alerts event filter plugin for processing zSecure alerts from
         Kafka
