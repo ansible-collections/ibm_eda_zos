@@ -82,8 +82,8 @@ The **security_alerts** event filter extracts attributes based on user-specific 
 
 **Workaround:** For unsupported formats, you can use Ansible-supported operators in rule conditions to identify specific alerts, and Jinja2 filters (including Python string methods) in the action section to extract data for playbook variables.
 
-Example Event Structure
-~~~~~~~~~~~~~~~~~~~~~~~
+Example for Event Structure
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Below is an example of an incoming Kafka event for alert "Update on APF data set (1204)":
 
@@ -97,7 +97,7 @@ Below is an example of an incoming Kafka event for alert "Update on APF data set
    }
 
 Custom Parsing Example
-~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^
 
 The following rulebook demonstrates how to parse custom alert formats using Ansible operators in conditions and Jinja2 filters in actions:
 
