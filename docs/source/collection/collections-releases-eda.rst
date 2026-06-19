@@ -12,18 +12,18 @@ Version 1.0.x
 --------------
 
 What's New
-----------
+~~~~~~~~~~~
 
 Initial release of the **ibm.ibm_eda_zos** collection, providing Event Driven Ansible solutions for IBM Z security monitoring and automated response capabilities. This collection integrates with zSecure alerts and provides comprehensive security event handling for z/OS environments.
 
 Major Changes
--------------
+~~~~~~~~~~~~~~
 
 * Added **security_alerts** event filter plugin for processing zSecure alerts from Kafka
 * Initial release of **ibm.ibm_eda_zos** collection for Event Driven Ansible on IBM Z
 
 Minor Changes
--------------
+~~~~~~~~~~~~
 
 **Documentation**
 
@@ -52,7 +52,7 @@ Minor Changes
 * Included base template with consistent styling and reusable components for RACF user information
 
 Availability
-------------
+~~~~~~~~~~~~~
 
 * `Automation Hub`_
 * `Galaxy`_
@@ -68,12 +68,12 @@ Availability
    https://github.com/ansible-collections/ibm_eda_zos
 
 Reference
----------
+~~~~~~~~~
 
 * Supported by IBM Ansible Content for IBM Z
 
 Known Issues
-------------
+~~~~~~~~~~~~~
 
 Alert Format Compatibility
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
