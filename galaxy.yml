@@ -1,60 +1,63 @@
----
-# This collection is initialized by https://github.com/ansible/ansible-creator 25.5.0
-
-# See https://docs.ansible.com/ansible/latest/dev_guide/collections_galaxy_meta.html
-
+# IBM collection namespace
 namespace: "ibm"
-name: "ibm_eda_zos"
-version: 1.0.0
-readme: README.md
-authors:
-  - your name <example@domain.com>
 
+# Event-Driven Ansible for IBM Z collection
+name: "ibm_eda_zos"
+
+# The collection version
+version: 1.0.0
+
+# Collection README file
+readme: README.md
+
+# Contributors
+authors:
+  - "Stephanie Lieu @stephanie-lieu"
+  - "Justin Soe @Justin-git305"
+  - "Sonali Samparna @sonali07samparna"
+  - "Abhirami H @Cherabhi"
+
+# Description
 description: Ansible Collection containing Event Driven Ansible solutions for IBM Z products.
+
+# TO-DO: CLARIFY LICENSE
 license_file: LICENSE
 
-# TO-DO: update the tags based on your content type
-tags: [ibm, z, zos, z_os, racf, z_secure, eda]
-# TO-DO: maintain this list to reflect the collection's dependencies
-dependencies:
-  "ansible.utils": "6.0.0"
-  "ibm.ibm_zos_core": "1.13.1"
+# Tags
+tags: [ibm, z, zos, z_os, ibm_eda_zos, racf, z_secure, eda]
 
-repository: https://github.ibm.com/zos-ansible/ibm_eda_zos
+# Collections that this collection requires to be installed for it to be usable.
+# dependencies:
+#   "ibm.ibm_zos_core": ">=1.13.1"
+#   "community.general": ">12.0.0"
+#   "ansible.eda": ">=2.8.0"
+
+# The URL of the originating SCM repository
+repository: https://github.com/ansible-collections/ibm_eda_zos
+
+# The URL to any online docs
 documentation: https://ibm.github.io/z_ansible_collections_doc/index.html
-homepage: https://www.ibm.com/support/z-content-solutions/ansible/
-issues: https://github.ibm.com/zos-ansible/ibm_eda_zos/issues
 
-# A list of file glob-like patterns used to filter any files or directories that should not be included in the build
-# artifact. A pattern is matched from the relative path of the file or directory of the collection directory. This
-# uses 'fnmatch' to match the files or directories. Some directories and files like 'galaxy.yml', '*.pyc', '*.retry',
-# and '.git' are always filtered. Mutually exclusive with 'manifest'
+# The URL to the homepage of the collection/project
+homepage: https://www.ibm.com/support/z-content-solutions/ansible/
+
+# The URL to the collection issue tracker
+issues: https://github.com/ansible-collections/ibm_eda_zos/issues
+
+# Ignore files and directories matching the following patterns
 build_ignore:
   - .gitignore
+  - .git
   - changelogs/.plugin-cache.yaml
   - .ansible
-  - .devcontainer
   - .github
   - .vscode
   - changelogs
-  - collections
   - docs
   - tests
   - venv
   - .ansible-lint
-  - .isort.cfg
-  - .pre-commit-config.yaml
-  - .prettierignore
   - ansible.cfg
   - branch_protection_rules.json
   - devfile.yaml
   - '*.tar.gz'
-  - pyproject.toml
-  - test-requirements.txt
-  - tox-ansible.ini
-# A dict controlling use of manifest directives used in building the collection artifact. The key 'directives' is a
-# list of MANIFEST.in style
-# L(directives,https://packaging.python.org/en/latest/guides/using-manifest-in/#manifest-in-commands). The key
-# 'omit_default_directives' is a boolean that controls whether the default directives are used. Mutually exclusive
-# with 'build_ignore'
-# manifest: null
