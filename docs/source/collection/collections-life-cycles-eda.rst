@@ -10,7 +10,7 @@ Collection life cycles
 
 
 Content update
-------------
+--------------
 
 The Event-Driven Ansible for IBM Z (ibm_eda_zos) collection is developed and released on a flexible release cycle, as a validated content collection. The new content and features is added as they become available and pass validation requirements. 
 We actively monitor dependencies of our use cases, and changes to these dependencies may cause certain versions of the collection to reach end of life.
