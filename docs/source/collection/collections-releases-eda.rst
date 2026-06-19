@@ -8,7 +8,7 @@
 Collection releases
 ===================
 
-Version 1.0.x
+Version 1.0.0
 --------------
 
 What's New
