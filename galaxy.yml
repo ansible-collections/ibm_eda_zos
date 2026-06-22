@@ -27,10 +27,10 @@ license_file: LICENSE
 tags: [ibm, z, zos, z_os, ibm_eda_zos, racf, z_secure, eda]
 
 # Collections that this collection requires to be installed for it to be usable.
-# dependencies:
-#   "ibm.ibm_zos_core": ">=1.13.1"
-#   "community.general": ">12.0.0"
-#   "ansible.eda": ">=2.8.0"
+dependencies:
+  "ibm.ibm_zos_core": ">=1.13.1"
+  "community.general": ">12.0.0"
+  "ansible.eda": ">=2.8.0"
 
 # The URL of the originating SCM repository
 repository: https://github.com/ansible-collections/ibm_eda_zos
@@ -53,6 +53,7 @@ build_ignore:
   - .github
   - .vscode
   - changelogs
+  - collections
   - docs
   - tests
   - venv
