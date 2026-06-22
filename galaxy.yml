@@ -20,7 +20,7 @@ authors:
 # Description
 description: Ansible Collection containing Event Driven Ansible solutions for IBM Z products.
 
-# TO-DO: CLARIFY LICENSE
+# License:
 license_file: LICENSE
 
 # Tags
