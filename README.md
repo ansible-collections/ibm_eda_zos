@@ -112,28 +112,28 @@ This filter parses complex event messages and makes key information immediately 
 
 The collection includes rulebooks for monitoring IBM Z security events:
 
-- **`1107_1108_group_auth_status.yml`** - Monitors RACF group authority changes (C2P1107I, C2P1108I)
-- **`1111_invalid_password_limit_exceeded.yml`** - Detects password threshold breaches with event correlation (C2P1111I, ICH408I)
-- **`1101_logon_by_unknown_user.yml`** - Monitors logon attempts by unknown users (C2P1101I)
-- **`1103_superuser_logon.yml`** - Detects superuser logon events (C2P1103I)
+- **`1107_1108_group_auth_status.yml`** - Monitors RACF group authority changes (C2P1107I, C2P1108I).
+- **`1111_invalid_password_limit_exceeded.yml`** - Detects password threshold breaches with event correlation (C2P1111I, ICH408I).
+- **`1101_logon_by_unknown_user.yml`** - Monitors logon attempts by unknown users (C2P1101I).
+- **`1103_superuser_logon.yml`** - Detects superuser logon events (C2P1103I).
 
 ### Response Playbooks
 
 Response playbooks that can be triggered by rulebooks:
 
-- **`respond_to_1107_1108_group_authority.yml`** - Gathers RACF context and sends notifications for group authority changes
-- **`respond_to_1111_password_threshold.yml`** - Retrieves RACF policy, user details, and sends comprehensive alerts for password breaches
-- **`quarantine_user.yml`** - Automated user quarantine for security incidents
-- **`send_alert_email.yml`** - Flexible email notification with HTML templates
+- **`respond_to_1107_1108_group_authority.yml`** - Gathers RACF context and sends notifications for group authority changes.
+- **`respond_to_1111_password_threshold.yml`** - Retrieves RACF policy, user details, and sends comprehensive alerts for password breaches.
+- **`quarantine_user.yml`** - Automated user quarantine for security incidents.
+- **`send_alert_email.yml`** - Flexible email notification with HTML templates.
 
 ### Email Templates
 
 HTML email templates for security notifications:
 
-- **`racf_alert_base.html.j2`** - Base HTML structure with CSS styling
-- **`racf_1107_1108_alert.html.j2`** - Group authority change alert template
-- **`racf_1111_alert.html.j2`** - Password threshold breach alert template
-- **`racf_listuser_section.html.j2`** - Reusable RACF LISTUSER output display
+- **`racf_alert_base.html.j2`** - Base HTML structure with CSS styling.
+- **`racf_1107_1108_alert.html.j2`** - Group authority change alert template.
+- **`racf_1111_alert.html.j2`** - Password threshold breach alert template.
+- **`racf_listuser_section.html.j2`** - Reusable RACF LISTUSER output display.
 
 ## Testing
 
@@ -181,8 +181,9 @@ As **Ansible Validated Content**, this collection is supported by the community 
 - Red Hat support services
 
 <br/>For issues with the collection:
-1. Check existing GitHub issues
-2. Open a new issue with detailed information about your environment and the problem
+1. Check existing GitHub issues.
+
+2. Open a new issue with detailed information about your environment and the problem.
 
 <br/>For issues with dependencies (ZOAU, Python SDK, z/OS), please contact IBM support directly.
 
