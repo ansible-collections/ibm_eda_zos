@@ -55,7 +55,7 @@ Dependency matrix
    | Version |   Event Source             | Control Node                              |   Managed Node                                      |
    +=========+============================+===========================================+=====================================================+
    | 1.0.x   |- IBM zSecure v3.1          |- `z/OS Core collection`_  >=1.13.x        |- `z/OS`_ V2R5 - V3Rx                                |
-   |         |- Apache Kafka for z v1.1.0 |- `Community General collection`_ >= 12.0.0|- `z/OS shell`_                                      |
+   |         |- Apache Kafka for Z v1.1.0 |- `Community General collection`_ >= 12.0.0|- `z/OS shell`_                                      |
    |         |                            |- `AAP`_ >=2.6                             |- `z/OS OpenSSH`_                                    |
    |         |                            |                                           |- IBM `Open Enterprise SDK for Python`_              |
    |         |                            |                                           |- IBM `Z Open Automation Utilities`_ >=1.3.6, <1.5.0 |
