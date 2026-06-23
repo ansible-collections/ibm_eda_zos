@@ -86,3 +86,5 @@ Dependency matrix
    https://access.redhat.com/support/policy/updates/ansible-automation-platform
 .. _Open Enterprise SDK for Python:
    https://www.ibm.com/products/open-enterprise-python-zos
+.. _z/OS:
+   https://www.ibm.com/docs/en/zos
