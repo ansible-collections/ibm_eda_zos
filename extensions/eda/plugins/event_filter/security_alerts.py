@@ -81,8 +81,11 @@ def _is_valid_userid(userid: str) -> bool:
         True if the user ID is valid, False otherwise
 
     """
+    max_userid_length = 8  # IBM z/OS TSO/RACF user ID max length
+    min_userid_length = 2
+
     userid = re.sub(r"[^\w\s]+$", "", userid)
-    if not userid or len(userid) > 8 or len(userid) < 2:
+    if not userid or len(userid) > max_userid_length or len(userid) < min_userid_length:
         return False
 
     # Must start with letter
@@ -91,13 +94,9 @@ def _is_valid_userid(userid: str) -> bool:
 
     # Can contain letters, numbers, and special chars (#, @, $)
     valid_chars = set("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789#@$")
-    if not all(c in valid_chars for c in userid.upper()):
-        return False
-
-    return True
+    return all(c in valid_chars for c in userid.upper())
 
 # Kafka related events
-
 
 def _get_full_alert_message_kafka(string: str) -> str | None:
     """Extract the alert message content from within quotation marks.
@@ -192,11 +191,7 @@ def _get_ip_address(string: str) -> str | None:
     """
     ip_pattern = r"\b(?:\d{1,3}\.){3}\d{1,3}\b"
     pattern_search = re.search(ip_pattern, string)
-    if pattern_search is not None:
-        ip_address = pattern_search.group(0).strip()
-    else:
-        ip_address = None
-    return ip_address
+    return pattern_search.group(0).strip() if pattern_search is not None else None
 
 
 def _get_job_name(string: str) -> str | None:
@@ -221,9 +216,8 @@ def _get_job_name(string: str) -> str | None:
     string_split = string.split(" ")
     job_name = None
     for idx, strings in enumerate(string_split):
-        if strings.lower() == substring:
-            if idx < len(string_split) - 1:
-                job_name = string_split[idx + 1]
+        if strings.lower() == substring and idx < len(string_split) - 1:
+            job_name = string_split[idx + 1]
     return job_name
 
 
@@ -249,9 +243,8 @@ def _get_group_name(string: str) -> str | None:
     string_split = string.split(" ")
     group_name = None
     for idx, strings in enumerate(string_split):
-        if strings == substring:
-            if idx < len(string_split) - 1:
-                group_name = string_split[idx + 1]
+        if strings == substring and idx < len(string_split) - 1:
+            group_name = string_split[idx + 1]
     return group_name
 
 
@@ -283,20 +276,17 @@ def _get_target_user_name(string: str) -> str | None:
     string_split = string.split(" ")
     target_user_name = None
     for idx, strings in enumerate(string_split):
-        if strings in substrings:
-            if idx < len(string_split) - 1:
+        if strings in substrings and idx < len(string_split) - 1:
                 if strings == "User":
                     # Look for target user after "from" or "for"
                     for j in range(idx + 2, len(string_split) - 1):
-                        if string_split[j] in ["from", "for"]:
-                            if _is_valid_userid(string_split[j + 1]):
+                        if string_split[j] in ["from", "for"] and _is_valid_userid(string_split[j + 1]):
                                 return string_split[j + 1]
                     continue
 
                 if (_is_valid_userid(string_split[idx + 1]) and
                         string_split[idx + 1] != "user"):
-                    target_user_name = string_split[idx + 1]
-                    return target_user_name
+                    return string_split[idx + 1]
     return target_user_name
 
 
@@ -328,16 +318,17 @@ def _get_action_user_name(string: str) -> str | None:
 
     # Check for "User X" pattern (action user at start edge case)
     for idx, strings in enumerate(string_split):
-        if strings == "User" and idx < len(string_split) - 1:
-            if _is_valid_userid(string_split[idx + 1]):
+        if (strings == "User" and
+            idx < len(string_split) - 1 and
+            _is_valid_userid(string_split[idx + 1])):
                 return string_split[idx + 1]
 
     for idx, strings in enumerate(string_split):
-        if strings == substring:
-            if (idx < len(string_split) - 1 and
-                    string_split[idx + 1] != "unknown"):
-                if _is_valid_userid(string_split[idx + 1]):
-                    action_user_name = string_split[idx + 1]
+        if (strings == substring and
+            idx < len(string_split) - 1 and
+            string_split[idx + 1] != "unknown" and
+            _is_valid_userid(string_split[idx + 1])):
+                action_user_name = string_split[idx + 1]
     return action_user_name
 
 
@@ -383,7 +374,6 @@ def main(event: dict[str, Any], event_source: str | None = None) -> (
     - action_user : str or None - Action user ID if present
 
     """
-
     if event_source == "kafka":
         try:
             # Safely access event body and message
@@ -425,20 +415,16 @@ def main(event: dict[str, Any], event_source: str | None = None) -> (
             body["target_user"] = _get_target_user_name(alert_message)
             body["action_user"] = _get_action_user_name(alert_message)
 
+        except KeyError:
+            logger.exception("Missing required field in event: %s")
+        except Exception:
+            logger.exception("Unexpected error processing event: %s")
+        else:
             logger.debug("Successfully processed zSecure alert event")
-            return event
-
-        except KeyError as e:
-            logger.error("Missing required field in event: %s", e,
-                         exc_info=True)
-            return event
-        except Exception as e:
-            logger.error("Unexpected error processing event: %s", e,
-                         exc_info=True)
-            return event
-
-    else:
-        # Non-kafka events are passed through unchanged
-        logger.debug("Event source '%s' not supported, returning event "
-                     "unchanged", event_source)
         return event
+
+
+    # Non-kafka events are passed through unchanged
+    logger.debug("Event source '%s' not supported, returning event "
+                    "unchanged", event_source)
+    return event
