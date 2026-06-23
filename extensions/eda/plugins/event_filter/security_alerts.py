@@ -79,8 +79,9 @@ def _is_valid_userid(userid: str) -> bool:
     -------
     bool
         True if the user ID is valid, False otherwise
+
     """
-    userid = re.sub(r'[^\w\s]+$', '', userid)
+    userid = re.sub(r"[^\w\s]+$", "", userid)
     if not userid or len(userid) > 8 or len(userid) < 2:
         return False
 
@@ -89,7 +90,7 @@ def _is_valid_userid(userid: str) -> bool:
         return False
 
     # Can contain letters, numbers, and special chars (#, @, $)
-    valid_chars = set('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789#@$')
+    valid_chars = set("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789#@$")
     if not all(c in valid_chars for c in userid.upper()):
         return False
 
@@ -114,6 +115,7 @@ def _get_full_alert_message_kafka(string: str) -> str | None:
     str or None
         The extracted alert message with leading/trailing whitespace
         removed, or None if no quoted text is found
+
     """
     pattern = r"\"(.*?)\""
     pattern_search = re.search(pattern, string)
@@ -138,8 +140,9 @@ def _get_alert_code_kafka(string: str) -> str:
     -------
     str
         The alert code (first word of the message)
+
     """
-    string_split = string.split(' ')
+    string_split = string.split(" ")
     return string_split[0]
 
 
@@ -159,12 +162,13 @@ def _get_hostname_kafka(string: str) -> str | None:
     str or None
         The hostname (first comma-separated value), or None if the
         string is empty or None
+
     """
     if not string:
         logger.warning("Metadata string not found")
         return None
 
-    string_split = string.split(',')
+    string_split = string.split(",")
     return string_split[0]
 
 
@@ -184,8 +188,9 @@ def _get_ip_address(string: str) -> str | None:
     str or None
         The extracted IPv4 address with whitespace removed, or None if
         no IP address pattern is found
+
     """
-    ip_pattern = r'\b(?:\d{1,3}\.){3}\d{1,3}\b'
+    ip_pattern = r"\b(?:\d{1,3}\.){3}\d{1,3}\b"
     pattern_search = re.search(ip_pattern, string)
     if pattern_search is not None:
         ip_address = pattern_search.group(0).strip()
@@ -210,8 +215,9 @@ def _get_job_name(string: str) -> str | None:
     str or None
         The job name (word following 'job'), or None if 'job' keyword
         is not found or is the last word in the string
+
     """
-    substring = 'job'
+    substring = "job"
     string_split = string.split(" ")
     job_name = None
     for idx, strings in enumerate(string_split):
@@ -237,8 +243,9 @@ def _get_group_name(string: str) -> str | None:
     str or None
         The group name (word following 'in'), or None if 'in' keyword
         is not found or is the last word in the string
+
     """
-    substring = 'in'
+    substring = "in"
     string_split = string.split(" ")
     group_name = None
     for idx, strings in enumerate(string_split):
@@ -269,9 +276,10 @@ def _get_target_user_name(string: str) -> str | None:
     str or None
         The target user name (valid user ID following a keyword), or
         None if no valid user ID is found
+
     """
-    substrings = ['from', 'user', 'User', 'superuser', 'Superuser',
-                  'to', 'for']
+    substrings = ["from", "user", "User", "superuser", "Superuser",
+                  "to", "for"]
     string_split = string.split(" ")
     target_user_name = None
     for idx, strings in enumerate(string_split):
@@ -280,13 +288,13 @@ def _get_target_user_name(string: str) -> str | None:
                 if strings == "User":
                     # Look for target user after "from" or "for"
                     for j in range(idx + 2, len(string_split) - 1):
-                        if string_split[j] in ['from', 'for']:
+                        if string_split[j] in ["from", "for"]:
                             if _is_valid_userid(string_split[j + 1]):
                                 return string_split[j + 1]
                     continue
 
                 if (_is_valid_userid(string_split[idx + 1]) and
-                        string_split[idx + 1] != 'user'):
+                        string_split[idx + 1] != "user"):
                     target_user_name = string_split[idx + 1]
                     return target_user_name
     return target_user_name
@@ -312,8 +320,9 @@ def _get_action_user_name(string: str) -> str | None:
     str or None
         The action user name (valid user ID following 'by' or after
         'User'), or None if no valid user ID is found
+
     """
-    substring = 'by'
+    substring = "by"
     string_split = string.split(" ")
     action_user_name = None
 
@@ -326,7 +335,7 @@ def _get_action_user_name(string: str) -> str | None:
     for idx, strings in enumerate(string_split):
         if strings == substring:
             if (idx < len(string_split) - 1 and
-                    string_split[idx + 1] != 'unknown'):
+                    string_split[idx + 1] != "unknown"):
                 if _is_valid_userid(string_split[idx + 1]):
                     action_user_name = string_split[idx + 1]
     return action_user_name
@@ -372,9 +381,10 @@ def main(event: dict[str, Any], event_source: str | None = None) -> (
     - group_name : str or None - Group name if present
     - target_user : str or None - Target user ID if present
     - action_user : str or None - Action user ID if present
+
     """
 
-    if event_source == 'kafka':
+    if event_source == "kafka":
         try:
             # Safely access event body and message
             body = event.get("body")
@@ -409,11 +419,11 @@ def main(event: dict[str, Any], event_source: str | None = None) -> (
                 logger.warning("Could not extract hostname from metadata")
 
             # Extract optional fields - failures are acceptable
-            body['ip_address'] = _get_ip_address(alert_message)
-            body['job_name'] = _get_job_name(alert_message)
-            body['group_name'] = _get_group_name(alert_message)
-            body['target_user'] = _get_target_user_name(alert_message)
-            body['action_user'] = _get_action_user_name(alert_message)
+            body["ip_address"] = _get_ip_address(alert_message)
+            body["job_name"] = _get_job_name(alert_message)
+            body["group_name"] = _get_group_name(alert_message)
+            body["target_user"] = _get_target_user_name(alert_message)
+            body["action_user"] = _get_action_user_name(alert_message)
 
             logger.debug("Successfully processed zSecure alert event")
             return event
