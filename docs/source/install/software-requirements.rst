@@ -84,3 +84,5 @@ Dependency matrix
    https://www.ibm.com/support/knowledgecenter/en/SSLTBW_2.4.0/com.ibm.zos.v2r4.bpxa400/part1.html
 .. _AAP:
    https://access.redhat.com/support/policy/updates/ansible-automation-platform
+.. _Open Enterprise SDK for Python:
+   https://www.ibm.com/products/open-enterprise-python-zos
