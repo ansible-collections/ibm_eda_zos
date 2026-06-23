@@ -52,7 +52,7 @@ build_ignore:
   - .ansible
   - .github
   - .vscode
-  - .DS_STORE
+  - .DS_Store
   - changelogs
   - collections
   - docs
