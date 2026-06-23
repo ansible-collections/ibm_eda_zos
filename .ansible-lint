@@ -23,6 +23,9 @@ exclude_paths:
   - ansible_collections/
   - ./*.log
 
+skip_list:
+  - syntax-check[unknown-module] # Skip because it is an EDA collection
+
 quiet: false
 use_default_rules: true
 verbosity: 1
