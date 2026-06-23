@@ -1,7 +1,7 @@
 ---
 schemaVersion: 2.2.2
 metadata:
-  name: ibm.ibm_z_solutions-f27c78f6
+  name: ibm.ibm_eda_zos-f27c78f6
 components:
   - name: tooling-container
     container:

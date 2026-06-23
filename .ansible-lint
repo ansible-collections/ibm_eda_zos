@@ -1,0 +1,32 @@
+################################################################################
+# Copyright (c) IBM Corporation 2026
+################################################################################
+# For additonal doc, see https://ansible.readthedocs.io/projects/lint/configuring/
+exclude_paths:
+  - .tar.gz
+  - __pycache__/
+  - .ansible-lint
+  - .cache/
+  - .DS_Store
+  - .git/
+  - .github/
+  - .gitignore
+  - .python-version
+  - .pytest_cache/
+  - .vscode/
+  - ansible.cfg
+  - changelogs/
+  - collections/
+  - docs/
+  - scripts/
+  - venv*
+  - ansible_collections/
+  - ./*.log
+
+parseable: true
+quiet: false
+use_default_rules: true
+verbosity: 1
+# Offline mode disables installation of requirements.yml and schema refreshing often
+# found in project_root/collections/requirements.yml.
+offline: true

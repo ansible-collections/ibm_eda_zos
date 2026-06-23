@@ -12,32 +12,7 @@ Security teams can implement continuous compliance monitoring and automated resp
 
 ## Requirements
 
-Before you install the IBM EDA z/OS collection, ensure that you configure the Ansible Automation Platform controller, Event-Driven Ansible controller, and z/OS managed nodes with the following requirements:
-
-### Ansible Automation Platform
-- **Ansible Automation Platform** 2.5 or later with Event-Driven Ansible Controller
-- **Decision Environment** with required collections installed
-- **Job Templates** configured for response playbooks
-
-### IBM Z System Requirements
-- **z/OS** *[insert version number]*
-- **IBM zSecure** installed and configured to publish alerts *[insert version number]*
-- **Common Data Provider for Z** installed and configured to stream SYSLOG data to Apache Kafka
-
-### Event Streaming
-- **Apache Kafka** broker configured with SSL/TLS
-
-### Additional Requirements
-- **IBM Z Open Automation Utilities (ZOAU)** *[insert version number]*
-- **IBM Open Enterprise SDK for Python** *[insert version number]*
-- **SMTP server** for email notifications
-
-
-### Collection Dependencies
-- `ibm.ibm_zos_core` >= *[insert version number]*
-- `ansible.utils` >= *[insert version number]*
-- `ansible.eda` (included with AAP)
-- `community.general` (for email notifications)
+Before you install the IBM EDA z/OS collection, ensure that you configure the Ansible Automation Platform controller, Event-Driven Ansible controller, and z/OS managed nodes with the following requirements found [here](https://ibm.github.io/z_ansible_collections_doc/index.html).
 
 ## Installation
 
@@ -51,12 +26,12 @@ ansible-galaxy collection install ibm.ibm_eda_zos
 
 ```yaml
 collections:
-  - name: ibm.ibm_eda_zos
   - name: ibm.ibm_zos_core
     version: ">=1.13.1"
-  - name: ansible.utils
-    version: ">=6.0.0"
   - name: community.general
+    version: ">=12.0.0"
+  - name: ansible.eda
+    version: ">=2.8.0"
 ```
 
 ### Configuration Variables
@@ -69,7 +44,7 @@ kafka_topic: "zsecure-alerts"
 kafka_host: "kafka.example.com"
 kafka_port: 9093
 security_protocol: "SSL"
-cafile: "/path/to/ca-cert.pem"
+ssl_cafile: "/path/to/ca-cert.pem"
 
 # Email Configuration for Job Templates
 security_alert_recipients:
@@ -98,7 +73,7 @@ system_environment:
 
 ### Custom Event Filter
 
-The collection includes a **security event filter** designed for Kafka event streams that automatically extracts valuable attributes from z/OS security events. This eliminates the need for custom regex filtering in every rulebook and playbook, significantly simplifying automation development and making event data readily accessible for conditions and variables.
+The collection includes a **security event filter** designed for Kafka event streams that automatically extracts valuable attributes from z/OS user related security events. This eliminates the need for custom regex filtering in every rulebook and playbook, significantly simplifying automation development and making event data readily accessible for conditions and variables.
 
 This filter parses complex event messages and makes key information immediately available at the top level, including:
 
@@ -112,27 +87,33 @@ This filter parses complex event messages and makes key information immediately 
 
 The collection includes rulebooks for monitoring IBM Z security events:
 
-- **`1107_1108_group_auth_status.yml`** - Monitors RACF group authority changes (C2P1107I, C2P1108I).
-- **`1111_invalid_password_limit_exceeded.yml`** - Detects password threshold breaches with event correlation (C2P1111I, ICH408I).
 - **`1101_logon_by_unknown_user.yml`** - Monitors logon attempts by unknown users (C2P1101I).
 - **`1103_superuser_logon.yml`** - Detects superuser logon events (C2P1103I).
+- **`1107_1108_group_auth_status.yml`** - Monitors RACF group authority changes (C2P1107I, C2P1108I).
+- **`1111_invalid_password_limit_exceeded.yml`** - Detects password threshold breaches with event correlation (C2P1111I, ICH408I).
 
 ### Response Playbooks
 
 Response playbooks that can be triggered by rulebooks:
 
-- **`respond_to_1107_1108_group_authority.yml`** - Gathers RACF context and sends notifications for group authority changes.
-- **`respond_to_1111_password_threshold.yml`** - Retrieves RACF policy, user details, and sends comprehensive alerts for password breaches.
-- **`quarantine_user.yml`** - Automated user quarantine for security incidents.
-- **`send_alert_email.yml`** - Flexible email notification with HTML templates.
+- **`gather_listuser_information.yml`** - Gathers RACF context and sends notifications for group authority changes.
+- **`gather_password_policy_information.yml`** - Retrieves RACF policy, user details, and sends comprehensive alerts for password breaches.
+- **`quarantine_user.yml`** - Quarantine a RACF user by applying CONTAIN attribute.
+- **`remove_uid_access.yml`** - Remove OMVS UID(0) access from a RACF user.
+- **`send_alert_email.yml`** - Send HTML email notification for security administrators.
+- **`setr_jes_batchallracf.yml`** - Enable RACF authentication for all batch jobs.
+- **`unquarantine_user.yml`** - Remove CONTAIN attribute and resume user access.
 
 ### Email Templates
 
 HTML email templates for security notifications:
 
-- **`racf_alert_base.html.j2`** - Base HTML structure with CSS styling.
+- **`racf_1101_alert.html.j2`** - RACF authentication for batch jobs alert template.
+- **`racf_1103_alert.html.j2`** - Remove OMVS UID(0) access alert template.
 - **`racf_1107_1108_alert.html.j2`** - Group authority change alert template.
 - **`racf_1111_alert.html.j2`** - Password threshold breach alert template.
+- **`racf_alert_base.html.j2`** - Base HTML structure with CSS styling.
+- **`racf_email_alert.html.j2`** - Email alert template.
 - **`racf_listuser_section.html.j2`** - Reusable RACF LISTUSER output display.
 
 ## Testing
@@ -143,31 +124,20 @@ All releases will meet the following test criteria.
 * 100% success for [Sanity](https://docs.ansible.com/ansible/latest/dev_guide/testing/sanity/index.html#all-sanity-tests) tests as part of [ansible-test](https://docs.ansible.com/ansible/latest/dev_guide/testing.html#run-sanity-tests).
 * 100% success for [ansible-lint](https://ansible.readthedocs.io/projects/lint/) allowing only false positives.
 
-<br/>This release of the collection was tested with following dependencies. *[versions to be added]*
-
-* ansible-core 
-* Python 
-* Ansible Automation Platform 
-* IBM Open Enterprise SDK for Python
-* IBM Z Open Automation Utilities (ZOAU) 
-* z/OS 
-* Apache Kafka 
-
 ## Contributing
 
 This community is not currently accepting contributions. However, we encourage you to open git issues for bugs, comments or feature requests.
 
-<br/>Review the collection documentation to learn how you can create a development environment and test the collection's rulebooks and playbooks.
+Review the collection documentation to learn how you can create a development environment and test the collection's rulebooks and playbooks.
 
 ## Communication
 
 If you would like to communicate with this community, you can do so through the following options.
 
-* GitHub discussions.
-* GitHub issues.
-* Ansible Forum, please use the `zos` and `eda` tags to ensure proper awareness.
-* Discord System Z Enthusiasts room `ansible`.
-* LinkedIn Ansible for IBM Z.
+* GitHub [issues](https://github.com/ansible-collections/ibm_eda_zos/issues).
+* [Ansible Forum](https://forum.ansible.com/), please use the `zos` and `eda` tags to ensure proper awareness.
+* Discord [System Z Enthusiasts](https://discord.gg/sze) room `ansible`.
+* LinkedIn [Ansible for IBM Z](https://www.linkedin.com/groups/14515630/).
   
 ## Support
 
@@ -181,13 +151,12 @@ As **Ansible Validated Content**, this collection is supported by the community 
 - Red Hat support services
 
 <br/>For issues with the collection:
-1. Check existing GitHub issues.
+1. Check existing [GitHub issues](https://github.com/ansible-collections/ibm_eda_zos/issues).
 
 2. Open a new issue with detailed information about your environment and the problem.
 
-<br/>For issues with dependencies (ZOAU, Python SDK, z/OS), please contact IBM support directly.
+<br/>For issues with dependencies (ZOAU, Python SDK, z/OS), contact IBM support directly.
 
-<br/>**Note:** This is a preview release (version 0.0.1) and is provided as-is for evaluation and testing purposes. Production use is not recommended until the collection reaches General Availability (GA) status.
 
 ## Release Notes and Roadmap
 
@@ -200,8 +169,6 @@ The collection provides core security monitoring capabilities for IBM Z systems 
 ## Related Information
 
 ### Documentation
-- [Event-Driven Ansible Rulebooks](extensions/eda/README.md) - Complete EDA rulebook documentation
-- [Security Response Playbooks](playbooks/security/README.md) - Detailed playbook documentation
 - [IBM Z Ansible Collections](https://ibm.github.io/z_ansible_collections_doc/index.html) - Comprehensive documentation for all IBM Z Ansible collections
 
 ### Examples and Samples
@@ -215,6 +182,6 @@ The collection provides core security monitoring capabilities for IBM Z systems 
 
 ## License Information
 
-Some portions of this collection are licensed under [GNU General Public License, Version 3.0](https://opensource.org/licenses/GPL-3.0), and other portions of this collection are licensed under [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0).
+This collection is licensed under [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0).
 
 See individual files for applicable licenses.

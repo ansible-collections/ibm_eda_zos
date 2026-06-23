@@ -1,0 +1,64 @@
+################################################################################
+# Copyright (c) IBM Corporation 2026
+################################################################################
+#
+################################################################################
+# This playbook sends an email notification for a security alert received from
+# an Event-Driven Ansible workflow.
+#
+# The playbook reads alert details from an incoming Ansible EDA event,
+# including `ansible_eda.event.body.alert_message`,
+# `ansible_eda.event.body.alert_code`, `ansible_eda.event.body.target_user`,
+# `ansible_eda.event.body.group_name`, `ansible_eda.event.body.job_name`, and
+# `ansible_eda.event.body.hostname`.
+#
+# It also reads the action status from `set_command_message`, builds an HTML
+# email body from the `templates/racf_email_alert.html.j2` template, and sends
+# the notification by using the configured SMTP server and recipient settings.
+#
+# Required configuration:
+# - SMTP settings must be provided for `security_alert_recipients`,
+#   `security_alert_sender`, `smtp_server`, and `smtp_server_port`.
+# - The `community.general` collection must be installed and available for the
+#   `mail` module.
+# - The template file `templates/racf_email_alert.html.j2` must exist and be
+#   accessible to the playbook.
+# - The incoming event should provide alert fields needed for notification
+#   context.
+################################################################################
+
+---
+- name: Send an email to notify of an alert occurrence
+  hosts: "{{ target_hosts | default('localhost') }}"
+  gather_facts: false
+
+  vars:
+    alert_message: "{{ ansible_eda.event.body.alert_message }}"
+    alert_code: "{{ ansible_eda.event.body.alert_code | default('N/A', true) }}"
+    target_user: "{{ ansible_eda.event.body.target_user | default('N/A', true) }}"
+    group_name: "{{ ansible_eda.event.body.group_name | default('N/A', true) }}"
+    job_name: "{{ ansible_eda.event.body.job_name | default('N/A', true) }}"
+    hostname: "{{ ansible_eda.event.body.hostname | default('N/A', true) }}"
+    # Email configuration valued defined in AAP Template vars
+    email_recipients: "{{ security_alert_recipients }}"
+    email_from: "{{ security_alert_sender }}"
+    smtp_host: "{{ smtp_server }}"
+    smtp_port: "{{ smtp_server_port }}"
+    # Action status from stats
+    command_message: "{{ set_command_message | default('no command', true)}}"
+
+  tasks:
+    - name: Build HTML notification body
+      ansible.builtin.set_fact:
+        notification_body_html: "{{ lookup('template', 'templates/racf_email_alert.html.j2') }}"
+
+    - name: Send an e-mail to the administrator
+      community.general.mail:
+        host: "{{ smtp_host | default('localhost') }}"
+        port: "{{ smtp_port }}"
+        to: "{{ email_recipients }}"
+        from: "{{ email_from }}"
+        subject: "zSecure alert - {{ alert_message }}"
+        subtype: html
+        body: "{{ notification_body_html }}"
+      delegate_to: localhost

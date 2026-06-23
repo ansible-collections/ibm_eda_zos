@@ -1,0 +1,30 @@
+{% include 'racf_alert_base.html.j2' %}
+
+<h3>zSecure Alert: Superuser Logon</h3>
+
+<div class="alert-box">
+  <p>
+    <b>Alert Code:</b> {{ alert_code }}<br/>
+    <b>User ID:</b> {{ target_user }}<br/>
+    <b>Group:</b> {{ group_name }}<br/>
+    <b>Hostname:</b> {{ hostname }}
+  </p>
+</div>
+
+<h4>Alert Details</h4>
+<div class="info-box">
+  <p><b>zSecure Alert:</b> {{ alert_message }}</p>
+  <p>
+    <b>Automated Action Taken:</b><br/>
+    Event-Driven Ansible executed command <code>ALTUSER </code>
+    on z/OS host <b>{{ hostname }}</b> to remove the uid(0) definition for user {{ target_user }}.
+  </p>
+</div>
+
+<hr/>
+<p style="font-size: 0.9em; color: #667;">
+  <i>*** DO NOT REPLY TO THIS MESSAGE. IT IS SENT BY AN EVENT-DRIVEN ANSIBLE SERVICE MACHINE ***</i>
+</p>
+
+</body>
+</html>
