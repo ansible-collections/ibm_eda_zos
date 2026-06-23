@@ -96,6 +96,7 @@ def _is_valid_userid(userid: str) -> bool:
     valid_chars = set("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789#@$")
     return all(c in valid_chars for c in userid.upper())
 
+
 # Kafka related events
 
 def _get_full_alert_message_kafka(string: str) -> str | None:
@@ -277,16 +278,16 @@ def _get_target_user_name(string: str) -> str | None:
     target_user_name = None
     for idx, strings in enumerate(string_split):
         if strings in substrings and idx < len(string_split) - 1:
-                if strings == "User":
-                    # Look for target user after "from" or "for"
-                    for j in range(idx + 2, len(string_split) - 1):
-                        if string_split[j] in ["from", "for"] and _is_valid_userid(string_split[j + 1]):
-                                return string_split[j + 1]
-                    continue
+            if strings == "User":
+                # Look for target user after "from" or "for"
+                for j in range(idx + 2, len(string_split) - 1):
+                    if string_split[j] in ["from", "for"] and _is_valid_userid(string_split[j + 1]):
+                        return string_split[j + 1]
+                continue
 
-                if (_is_valid_userid(string_split[idx + 1]) and
-                        string_split[idx + 1] != "user"):
-                    return string_split[idx + 1]
+            if (_is_valid_userid(string_split[idx + 1]) and
+                    string_split[idx + 1] != "user"):
+                return string_split[idx + 1]
     return target_user_name
 
 
@@ -319,16 +320,16 @@ def _get_action_user_name(string: str) -> str | None:
     # Check for "User X" pattern (action user at start edge case)
     for idx, strings in enumerate(string_split):
         if (strings == "User" and
-            idx < len(string_split) - 1 and
-            _is_valid_userid(string_split[idx + 1])):
-                return string_split[idx + 1]
+                idx < len(string_split) - 1 and
+                _is_valid_userid(string_split[idx + 1])):
+            return string_split[idx + 1]
 
     for idx, strings in enumerate(string_split):
         if (strings == substring and
-            idx < len(string_split) - 1 and
-            string_split[idx + 1] != "unknown" and
-            _is_valid_userid(string_split[idx + 1])):
-                action_user_name = string_split[idx + 1]
+                idx < len(string_split) - 1 and
+                string_split[idx + 1] != "unknown" and
+                _is_valid_userid(string_split[idx + 1])):
+            action_user_name = string_split[idx + 1]
     return action_user_name
 
 
@@ -416,15 +417,14 @@ def main(event: dict[str, Any], event_source: str | None = None) -> (
             body["action_user"] = _get_action_user_name(alert_message)
 
         except KeyError:
-            logger.exception("Missing required field in event: %s")
+            logger.exception("Missing required field in event")
         except Exception:
-            logger.exception("Unexpected error processing event: %s")
+            logger.exception("Unexpected error processing event")
         else:
             logger.debug("Successfully processed zSecure alert event")
         return event
 
-
     # Non-kafka events are passed through unchanged
     logger.debug("Event source '%s' not supported, returning event "
-                    "unchanged", event_source)
+                 "unchanged", event_source)
     return event
