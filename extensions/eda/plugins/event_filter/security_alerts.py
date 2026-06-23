@@ -13,6 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Event filter plugin for processing zSecure user related security alerts.
+
+This module provides an event filter that extracts and structures security alert
+attributes from zSecure events received through Kafka. It parses alert messages
+to extract key information such as alert codes, hostnames, IP addresses, user
+information, and other security-relevant data.
+"""
+
 from __future__ import annotations
 import logging
 import re
@@ -418,8 +426,8 @@ def main(event: dict[str, Any], event_source: str | None = None) -> (
 
         except KeyError:
             logger.exception("Missing required field in event")
-        except Exception:
-            logger.exception("Unexpected error processing event")
+        except (ValueError, TypeError, AttributeError):
+            logger.exception("Error processing event data")
         else:
             logger.debug("Successfully processed zSecure alert event")
         return event
