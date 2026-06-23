@@ -24,7 +24,7 @@ description: Ansible Collection containing Event Driven Ansible solutions for IB
 license_file: LICENSE
 
 # Tags
-tags: [ibm, z, zos, z_os, ibm_eda_zos, racf, z_secure, eda]
+tags: [ibm, z, zos, z_os, ibm_eda_zos, racf, security, eda, infrastructure]
 
 # Collections that this collection requires to be installed for it to be usable.
 dependencies:
@@ -52,6 +52,7 @@ build_ignore:
   - .ansible
   - .github
   - .vscode
+  - .DS_STORE
   - changelogs
   - collections
   - docs

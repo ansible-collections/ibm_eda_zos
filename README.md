@@ -12,7 +12,7 @@ Security teams can implement continuous compliance monitoring and automated resp
 
 ## Requirements
 
-Before you install the IBM EDA z/OS collection, ensure that you configure the Ansible Automation Platform controller, Event-Driven Ansible controller, and z/OS managed nodes with the following requirements found [here](https://ibm.github.io/z_ansible_collections_doc/index.html).
+Before you install the IBM EDA z/OS collection, ensure that you configure the Ansible Automation Platform controller, Event-Driven Ansible controller, and z/OS managed nodes with the following requirements found [here](https://ibm.github.io/z_ansible_collections_doc/index.html) under Event-Driven Ansible for IBM Z.
 
 ## Installation
 
@@ -26,12 +26,7 @@ ansible-galaxy collection install ibm.ibm_eda_zos
 
 ```yaml
 collections:
-  - name: ibm.ibm_zos_core
-    version: ">=1.13.1"
-  - name: community.general
-    version: ">=12.0.0"
-  - name: ansible.eda
-    version: ">=2.8.0"
+  - name: ibm.ibm_eda_zos
 ```
 
 ### Configuration Variables
@@ -145,10 +140,9 @@ As **Ansible Validated Content**, this collection is supported by the community 
 
 <br/>Community support does **not** include:
 - Ansible Automation Platform components
-- IBM Z Open Automation Utilities (ZOAU)
-- IBM Open Enterprise SDK for Python
-- ansible-core
-- Red Hat support services
+- I[BM Z Open Automation Utilities (ZOAU)](https://www.ibm.com/docs/en/zoau)
+- [IBM Open Enterprise SDK for Python](https://www.ibm.com/products/open-enterprise-python-zos)
+- [ansible-core](https://github.com/ansible/ansible)
 
 <br/>For issues with the collection:
 1. Check existing [GitHub issues](https://github.com/ansible-collections/ibm_eda_zos/issues).
