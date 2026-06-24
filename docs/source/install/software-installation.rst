@@ -7,14 +7,18 @@
 ..       For now, static links are used (which might actually be safer :) )
 .. ...........................................................................
 =====================
-Software Installation
+Software installation
 =====================
 
-To know more about the software installation, see `Ansible for IBM Z`_.
+Event-Driven Ansible uses a similar installation, upgrade and remove process as other collections.
 
-To upgrade the collection to the latest available version, see `Upgrade for IBM Z`_. 
+For more information, see the following:
 
-To remove the collection, see `Remove Ansible for IBM Z`_.
+- For software installation, see `Ansible for IBM Z`_.
+
+- To upgrade the collection, see `Upgrade for IBM Z`_. 
+
+- To remove the collection, see `Remove Ansible for IBM Z`_.
 
 .. _Ansible for IBM Z:
    https://ibm.github.io/z_ansible_collections_doc/installation/install-collections.html
