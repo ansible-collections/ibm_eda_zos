@@ -137,7 +137,7 @@ Notes
 See also
 --------
 
-* The EDA rulebooks that launch this playbook when batch security violations are detected.
+* The :ref:`1101_logon_by_unknown_user` rulebook launch this playbook when batch security violations are detected.
 * To issue RACF commands, see the `ibm.ibm_zos_core.zos_tso_command <https://ibm.github.io/z_ansible_collections_doc/ibm_zos_core/docs/source/modules/zos_tso_command.html>`_ module.
 * RACF documentation for `SETROPTS JES(BATCHALLRACF)`_ command.
 * Email notification playbooks that consume the `set_stats` data from this playbook.
