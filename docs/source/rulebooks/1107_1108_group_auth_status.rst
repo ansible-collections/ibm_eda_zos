@@ -2,8 +2,9 @@
 .. © Copyright IBM Corporation 2020, 2026                                    .
 .. ...........................................................................
 
+.. _1107_1108_group_auth_status:
 
-1107_1108_group_auth_status - Monitor zSecure Alerts from Kafka for Group Authority Change.
+1107_1108_group_auth_status - Monitor zSecure Alerts from Kafka for Group Authority Change
 =====================================
 
 .. contents::

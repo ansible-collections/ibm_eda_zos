@@ -2,8 +2,9 @@
 .. © Copyright IBM Corporation 2020, 2026                                    .
 .. ...........................................................................
 
+.. _1103_superuser_logon: 
 
-1103_group_auth_status - Monitor zSecure alerts from Kafka for logon of a user with uid(0).
+1103_superuser_logon- Monitor zSecure alerts from Kafka for logon of a user with uid(0)
 ====================================
 
 .. contents::

@@ -138,7 +138,7 @@ Notes
 See also
 --------
 
-* :ref:`1103_superuser_logon` rulebook that launch this playbook.
+* The :ref:`1103_superuser_logon` rulebook that launch this playbook.
 * To issue the RACF command, use the `ibm.ibm_zos_core.zos_tso_command <https://ibm.github.io/z_ansible_collections_doc/ibm_zos_core/docs/source/modules/zos_tso_command.html>`_ module.
 * To apply the CONTAIN attribute, use the :ref:`quarantine_user` playbook.
 * Email notification playbooks that consume the ``set_stats`` data from this playbook.
