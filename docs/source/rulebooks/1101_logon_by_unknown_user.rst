@@ -2,8 +2,9 @@
 .. © Copyright IBM Corporation 2020, 2026                                    .
 .. ...........................................................................
 
+.. _1101_logon_by_unknown_user:
 
-1101_logon_by_unknown_user - Monitor zSecure alerts from Kafka for logon by an unknown user.
+1101_logon_by_unknown_user - Monitor zSecure alerts from Kafka for logon by an unknown user
 =====================================
 
 .. contents::
