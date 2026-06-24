@@ -30,8 +30,8 @@ review the `Red Hat Ansible Automation Platform Life Cycle`_ to select a support
   
 The collection comprises of playbooks which require: 
 
- - `z/OS Core collection`_ >= 1.13.x
- - `Community General collection`_ >= 12.0.0
+ - `z/OS Core collection`_ 1.13.x or later
+ - `Community General collection`_ 12.0.0 or later
 
 
 Managed node
@@ -40,6 +40,7 @@ Managed node
 The :term:`managed node<Managed node>` requires the following be installed and
 configured:
 
+ - `z/OS`
  - `z/OS shell`_
  - `z/OS OpenSSH`_
  - IBM `Open Enterprise SDK for Python`_
