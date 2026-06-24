@@ -11,45 +11,42 @@ Collection releases
 Version 1.0.0
 --------------
 
-What's New
-~~~~~~~~~~~
-
-Initial release of the `ibm.ibm_eda_zos` collection, providing Event Driven Ansible solutions for IBM Z security monitoring and automated response capabilities. This collection integrates with zSecure alerts and provides comprehensive security event handling for z/OS environments.
+Initial release of the `ibm.ibm_eda_zos` collection, that provides Event Driven Ansible solutions for IBM Z security monitoring and automated response capabilities. This collection integrates with zSecure alerts and provides comprehensive security event handling for z/OS environments.
 
 Major Changes
 ~~~~~~~~~~~~~~
 
-* Added **security_alerts** event filter plugin for processing zSecure alerts from Kafka
-* Initial release of `ibm.ibm_eda_zos` collection for Event Driven Ansible on IBM Z
+* Added **security_alerts** event filter plugin for processing zSecure alerts from Kafka.
+* Initial release of `ibm.ibm_eda_zos` collection for Event Driven Ansible on IBM Z.
 
 Minor Changes
 ~~~~~~~~~~~~
 
 **Documentation**
 
-* Add documentation for collection usage and examples
+* Add documentation for collection usage and examples.
 
 **Rulebooks**
 
-* Added rulebook for detecting invalid password limit exceeded events (alert 1111)
-* Added rulebook for detecting logon attempts by unknown users (alert 1101)
-* Added rulebook for monitoring superuser logon events (alert 1103)
-* Added rulebook for tracking group authorization status changes (alerts 1107/1108)
+* Added rulebook for detecting invalid password limit exceeded events (alert 1111).
+* Added rulebook for detecting logon attempts by unknown users (alert 1101).
+* Added rulebook for monitoring superuser logon events (alert 1103).
+* Added rulebook for tracking group authorization status changes (alerts 1107/1108).
 
 **Playbooks**
 
-* Created **gather_listuser_information** playbook for user account details
-* Created **gather_password_policy_information** playbook for policy compliance checks
-* Created **quarantine_user** playbook for automated account suspension
-* Created **remove_uid_access** playbook for emergency access revocation
-* Created **send_alert_email** playbook for security notification distribution
-* Created **setr_jes_batchallracf** playbook for JES batch security configuration
-* Created **unquarantine_user** playbook for account restoration
+* Created **gather_listuser_information** playbook for user account details.
+* Created **gather_password_policy_information** playbook for policy compliance checks.
+* Created **quarantine_user** playbook for automated account suspension.
+* Created **remove_uid_access** playbook for emergency access revocation.
+* Created **send_alert_email** playbook for security notification distribution.
+* Created **setr_jes_batchallracf** playbook for JES batch security configuration.
+* Created **unquarantine_user** playbook for account restoration.
 
 **Templates**
 
-* Added HTML email templates for formatted security alert notifications with alert-specific layouts
-* Included base template with consistent styling and reusable components for RACF user information
+* Added HTML email templates for formatted security alert notifications with alert-specific layouts.
+* Included base template with consistent styling and reusable components for RACF user information.
 
 Availability
 ~~~~~~~~~~~~~
@@ -70,7 +67,7 @@ Availability
 Reference
 ~~~~~~~~~
 
-* Supported by IBM Ansible Content for IBM Z
+* Supported by IBM Ansible Content for IBM Z.
 
 Known Issues
 ~~~~~~~~~~~~~

@@ -10,9 +10,9 @@
 Software Configuration
 ==================
 
-These instructions provides steps for configuring rulebooks and playbooks from the IBM EDA z/OS collection in Ansible Automation Platform (AAP) for first-time users. 
+Event-Driven Ansible (EDA) software configuration instructions provide steps for configuring rulebooks and playbooks from the IBM EDA z/OS collection in Ansible Automation Platform (AAP) for first-time users. 
 
-This configuration enables Event-Driven Ansible to consume zSecure alerts from z/OS via Kafka.
+This configuration enables EDA to consume zSecure alerts from z/OS via Kafka.
 
 .. note::
    For the end-to-end workflow to run successfully, ensure that you configure z/OS with zSecure alerts routing to Kafka for Event-Driven Ansible consumption.
@@ -153,8 +153,8 @@ Automation Controller Project
 Event-Driven Ansible Controller Project
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-1. Navigate to **Event-Driven Ansible → Projects**
-2. Click **Create project**
+1. Navigate to **Event-Driven Ansible → Projects**.
+2. Click **Create project**.
 3. Configure the project:
    
    * **Name:** IBM EDA z/OS Collection
@@ -162,8 +162,8 @@ Event-Driven Ansible Controller Project
    * **Source Control URL:** Your GitHub repository URL
    * **Source Control Credential:** Select the GitHub credential created in Step 3
 
-4. Click **Create project**
-5. Wait for the project sync to complete
+4. Click **Create project**.
+5. Wait for the project sync to complete.
 
 .. note::
    Both controllers now have access to the rulebooks and playbooks in the collection.
@@ -176,36 +176,36 @@ Configure the Automation Controller to execute playbooks in response to events.
 Create a host
 ^^^^^^^^^^^^^
 
-1. Navigate to **Automation Controller → Hosts**
-2. Click **Create host**
+1. Navigate to **Automation Controller → Hosts**.
+2. Click **Create host**.
 3. Configure the host:
    
    * **Name:** Your z/OS managed node hostname
    * **Description:** z/OS system for EDA security automation
 
-4. Click **Save**
+4. Click **Save**.
 
 Create an Inventory
 ^^^^^^^^^^^^^^^^^^^^
 
-1. Navigate to **Automation Controller → Inventories**
-2. Click **Create inventory → Create inventory**
+1. Navigate to **Automation Controller → Inventories**.
+2. Click **Create inventory → Create inventory**.
 3. Configure the inventory:
    
    * **Name:** z/OS EDA Inventory
    * **Organization:** Select your organization
 
-4. Click **Save**
-5. Navigate to the **Hosts** tab
-6. Click **Add**
-7. Select the host created in the previous step
-8. Click **Save**
+4. Click **Save**.
+5. Navigate to the **Hosts** tab.
+6. Click **Add**.
+7. Select the host created in the previous step.
+8. Click **Save**.
 
 Create a Job Template
 ^^^^^^^^^^^^^^^^^^^^^^
 
-1. Navigate to **Automation Controller → Templates**
-2. Click **Create template → Create job template**
+1. Navigate to **Automation Controller → Templates**.
+2. Click **Create template → Create job template**.
 3. Configure the job template:
 
    **Basic Information:**
@@ -237,7 +237,7 @@ Create a Job Template
       smtp_server: smtp.example.com
       smtp_server_port: 587
 
-4. Click **Save**
+4. Click **Save**.
 
 .. tip::
    Test the job template manually before activating the rulebook to ensure proper configuration.
@@ -250,8 +250,8 @@ Configure the Event-Driven Ansible Controller to listen for events and trigger a
 Create a Rulebook Activation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-1. Navigate to **Event-Driven Ansible → Rulebook Activations**
-2. Click **Create rulebook activation**
+1. Navigate to **Event-Driven Ansible → Rulebook Activations**.
+2. Click **Create rulebook activation**.
 3. Configure the rulebook activation:
 
    **Basic Information:**
@@ -296,7 +296,7 @@ Create a Rulebook Activation
       kafka_topic: zsecure-alerts
       security_protocol: SSL
 
-4. Click **Create rulebook activation**
+4. Click **Create rulebook activation**.
 
 .. important::
    The rulebook activation starts listening for events immediately upon creation if enabled.
