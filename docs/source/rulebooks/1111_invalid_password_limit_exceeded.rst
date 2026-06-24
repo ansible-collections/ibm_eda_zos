@@ -122,7 +122,7 @@ Rules
 Alert codes monitored:
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-* **C2P1111I**: zSecure alert indicating password threshold exceeded.
+* **C2P1111I**: zSecure alert that indicats password threshold exceeded.
 * **ICH408I**: RACF message confirming logon or job initiation failure.
 
 Event correlation logic
