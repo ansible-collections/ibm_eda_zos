@@ -21,7 +21,7 @@ When the alert is received, the rulebook launches the configured AAP job templat
 Unlike rulebooks that use multi event correlation, this rulebook uses a single event condition. Each zSecure alert in this family is self-contained, so no corroborating event is required and no timeout is needed.
 
 Rulebook
--------
+--------
 
 .. code-block:: yaml
 
@@ -165,7 +165,7 @@ Event body fields
 * **timestamp**: ISO 8601 timestamp of the alert.
 
 Variables
---------
+---------
 
 When you activate the rulebook in Ansible Automation Platform, the following variables are defined:
 
