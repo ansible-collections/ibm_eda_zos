@@ -314,7 +314,7 @@ Troubleshooting
 --------------
 
 Rulebook not triggering
-~~~~~~~~~~~~~~~~~~~~~~~``
+~~~~~~~~~~~~~~~~~~~~~~~
 
 * Verify whether both Event A and Event B are published to Kafka.
 * Verify whether the event format matches the expected structure for both events.

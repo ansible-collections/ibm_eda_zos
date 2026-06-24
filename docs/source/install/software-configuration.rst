@@ -35,7 +35,7 @@ Prerequisites
   * GitHub/Source Control
   * z/OS managed nodes
   * Kafka broker
-  * SMTP server
+  * SMTP server.
 
 Environment Preparation
 ------------------------
@@ -95,7 +95,7 @@ Automation Controller Credentials
    * **Required Information:**
      
      * GitHub username
-     * Personal access token or password
+     * Personal access token or password.
 
 2. **Machine Credentials (z/OS)**
    
@@ -105,7 +105,7 @@ Automation Controller Credentials
      
      * SSH username
      * SSH private key or password
-     * Privilege escalation method (if required)
+     * Privilege escalation method (if required).
 
 Event-Driven Ansible Controller Credentials
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -117,7 +117,7 @@ Event-Driven Ansible Controller Credentials
    * **Required Information:**
      
      * GitHub username
-     * Personal access token or password
+     * Personal access token or password.
 
 2. **Red Hat Ansible Automation Platform Credential**
    
@@ -126,7 +126,7 @@ Event-Driven Ansible Controller Credentials
    * **Required Information:**
      
      * Automation Controller URL
-     * OAuth token or username/password
+     * OAuth token or username/password.
 
 Step 4: Create projects
 -----------------------
@@ -215,7 +215,7 @@ Create a Job Template
    * **Inventory:** Select ``z/OS EDA Inventory``
    * **Project:** Select ``IBM EDA z/OS Collection``
    * **Playbook:** ``playbooks/security/<playbook_name>.yml``
-   * **Credentials:** Select the z/OS machine credential
+   * **Credentials:** Select the z/OS machine credential.
 
    **Extra Variables:**
    
@@ -260,13 +260,13 @@ Create a Rulebook Activation
    * **Description:** Monitors Kafka for zSecure group authority change alerts
    * **Organization:** Default (or your organization)
    * **Project:** Select ``IBM EDA z/OS Collection``
-   * **Rulebook:** Select the appropriate rulebook from the dropdown
+   * **Rulebook:** Select the appropriate rulebook from the dropdown.
      
      * Path: ``extensions/eda/rulebooks/security/<rulebook-name>.yml``
 
    **Credentials:**
    
-   * **Red Hat Ansible Automation Platform:** Select the AAP credential created in Step 3
+   * **Red Hat Ansible Automation Platform:** Select the AAP credential created in Step 3.
 
    **Decision Environment:**
    

@@ -71,7 +71,7 @@ for notification purposes. The playbook then skips the unquarantine actions.
 Phase 2: Execute unquarantine and verify (valid user only)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-When a valid user ID is provided, the playbook:
+When a valid user ID is provided, the playbook does the following:
 
 1. Issues the ALTUSER command to remove the CONTAIN attribute and resume the user's access. The 
    command uses both NOCONTAIN (to remove the containment) and RESUME (to restore access) parameters. 
