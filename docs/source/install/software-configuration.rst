@@ -85,10 +85,10 @@ Step 3: Set up credentials
 
 Configure the following credentials in Ansible Automation Platform:
 
-Automation Controller Credentials
+Automation Controller credentials
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-1. **Source Control Credential**
+1. **Source Control credential**
    
    * **Purpose:** Connect to GitHub
    * **Type:** Source Control
@@ -97,7 +97,7 @@ Automation Controller Credentials
      * GitHub username
      * Personal access token or password.
 
-2. **Machine Credentials (z/OS)**
+2. **Machine credentials (z/OS)**
    
    * **Purpose:** Connect to the z/OS managed node
    * **Type:** Machine
@@ -107,10 +107,10 @@ Automation Controller Credentials
      * SSH private key or password
      * Privilege escalation method (if required).
 
-Event-Driven Ansible Controller Credentials
+Event-Driven Ansible Controller credentials
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-1. **Source Control Credential**
+1. **Source Control credential**
    
    * **Purpose:** Connect to GitHub
    * **Type:** Source Control
@@ -119,7 +119,7 @@ Event-Driven Ansible Controller Credentials
      * GitHub username
      * Personal access token or password.
 
-2. **Red Hat Ansible Automation Platform Credential**
+2. **Red Hat Ansible Automation Platform credential**
    
    * **Purpose:** Connect to the Automation Controller
    * **Type:** Red Hat Ansible Automation Platform
@@ -133,7 +133,7 @@ Step 4: Create projects
 
 Create projects in both controllers to access the collection content.
 
-Automation Controller Project
+Automation Controller project
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 1. Navigate to **Automation Controller → Projects**.
@@ -150,7 +150,7 @@ Automation Controller Project
 4. Click **Save**.
 5. Wait for the project sync to complete.
 
-Event-Driven Ansible Controller Project
+Event-Driven Ansible Controller project
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 1. Navigate to **Event-Driven Ansible → Projects**.
@@ -168,7 +168,7 @@ Event-Driven Ansible Controller Project
 .. note::
    Both controllers now have access to the rulebooks and playbooks in the collection.
 
-Step 5: Playbook Setup in Automation Controller
+Step 5: Playbook setup in Automation Controller
 ------------------------------------------------
 
 Configure the Automation Controller to execute playbooks in response to events.
@@ -185,7 +185,7 @@ Create a host
 
 4. Click **Save**.
 
-Create an Inventory
+Create an inventory
 ^^^^^^^^^^^^^^^^^^^^
 
 1. Navigate to **Automation Controller → Inventories**.
@@ -201,7 +201,7 @@ Create an Inventory
 7. Select the host created in the previous step.
 8. Click **Save**.
 
-Create a Job Template
+Create a job template
 ^^^^^^^^^^^^^^^^^^^^^^
 
 1. Navigate to **Automation Controller → Templates**.
@@ -242,12 +242,12 @@ Create a Job Template
 .. tip::
    Test the job template manually before activating the rulebook to ensure proper configuration.
 
-Step 6: Rulebook setup in Event-Driven Ansible controller
+Step 6: Rulebook setup in Event-Driven Ansible Controller
 ----------------------------------------------------------
 
 Configure the Event-Driven Ansible Controller to listen for events and trigger automation.
 
-Create a Rulebook Activation
+Create a rulebook activation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 1. Navigate to **Event-Driven Ansible → Rulebook Activations**.

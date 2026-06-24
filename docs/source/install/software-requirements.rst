@@ -40,7 +40,7 @@ Managed node
 The :term:`managed node<Managed node>` requires the following be installed and
 configured:
 
- - `z/OS`
+ - `z/OS`_
  - `z/OS shell`_
  - `z/OS OpenSSH`_
  - IBM `Open Enterprise SDK for Python`_
