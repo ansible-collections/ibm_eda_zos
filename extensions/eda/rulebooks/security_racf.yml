@@ -1,0 +1,21 @@
+---
+- name: z/OS RACF Security Event Demo
+  hosts: localhost
+  sources:
+    - name: kafka
+      ansible.eda.kafka:
+        topic: "{{ kafka_topic | default('zos-racf-alerts') }}"
+        host: "{{ kafka_host | default('localhost') }}"
+        port: "{{ kafka_port | default(9092) }}"
+  rules:
+    - name: "Handle RACF ICH408I INSUFFICIENT AUTHORITY error message"
+      condition: >
+        event.body.keyword == "ICH408I"
+      action:
+        run_job_template:
+          name: "Authorize User"
+          organization: "Default"
+          job_args:
+            extra_vars:
+              racf_event: "{{ event.body }}"
+              target_hosts: "{{ event.body.zos_system }}"

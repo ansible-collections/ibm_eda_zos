@@ -1,0 +1,17 @@
+- name: Hello world message and ping z/OS machine
+  hosts: "{{ target_hosts | default('localhost') }}"
+  gather_facts: false
+  become: false
+
+  tasks:
+    - name: Hello world
+      ansible.builtin.debug:
+        msg: hello, world
+
+    - name: Ping z/OS
+      ibm.ibm_zos_core.zos_ping:
+      register: result
+
+    - name: Response
+      ansible.builtin.debug:
+        msg: "{{ result.ping }}"
