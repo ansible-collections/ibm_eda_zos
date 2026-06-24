@@ -149,7 +149,7 @@ As **Ansible Validated Content**, this collection is supported by the community 
 
 2. Open a new issue with detailed information about your environment and the problem.
 
-<br/>For issues with dependencies (ZOAU, Python SDK, z/OS), please contact IBM support directly.
+<br/>For issues with dependencies (ZOAU, Python SDK, z/OS), contact IBM support directly.
 
 
 ## Release Notes and Roadmap
