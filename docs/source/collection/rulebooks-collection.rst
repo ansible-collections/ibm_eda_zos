@@ -1,9 +1,9 @@
 .. ...........................................................................
 .. © Copyright IBM Corporation 2020, 2026                                    .
 .. ...........................................................................
-=============
+=========
 Rulebooks
-=============
+=========
 
 Rulebooks transform Ansible from a task-execution tool 
 into a reactive automation platform that responds intelligently to your infrastructure's needs 
