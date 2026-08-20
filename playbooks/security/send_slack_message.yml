@@ -1,0 +1,89 @@
+################################################################################
+# Copyright (c) IBM Corporation 2026
+################################################################################
+#
+################################################################################
+# This playbook sends a Slack notification for a security alert received from
+# an Event-Driven Ansible workflow.
+#
+# Event shapes
+# ------------
+# Each supported event shape is handled by a dedicated block.  The block-level
+# `when:` condition controls which branch runs; tasks inside never repeat it.
+# To add a new shape: add a new block with its own condition and tasks.
+#
+# Supported shapes:
+#
+#   smf_record_flood  (alert 1607 — C2P1607I)
+#     Condition: ansible_eda.events is defined and ansible_eda.events.c2p1607i is defined
+#     Ruleset:   "Rule to handle alert 1607 - SMF Record Flood"
+#     Action:    Log the raw event body for downstream processing.
+#
+#   standard (default / fallback)
+#     Condition: ansible_eda.events is not defined or ansible_eda.events.c2p1607i is not defined
+#     Source:    ansible_eda.event.body.*
+#     Action:    Post a formatted Slack notification.
+#
+# Required configuration:
+# - `slack_webhook` must be provided as an extra variable or credential.
+# - `aap_controller_host` must be set when a workflow URL is required.
+# - The `community.general` collection must be installed and available for the
+#   `slack` module.
+# - The incoming event should provide alert fields needed for notification
+#   context.
+################################################################################
+
+---
+- name: Send Slack notification via Webhook
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    slack_token: "{{ slack_webhook }}"
+
+    # workflow_url: builds the AAP workflow URL if awx_workflow_job_id is a non-empty value;
+    # falls back to 'None'. Guards against '', Python None, and the string 'None' explicitly,
+    # as a null YAML value is seen by Jinja2 as defined and would otherwise leak into the URL.
+    # AAP automatically provides awx_workflow_job_id to jobs running inside a workflow.
+    workflow_url: >-
+      {{ 'https://' ~ aap_controller_host ~ '/execution/jobs/workflow/' ~ awx_workflow_job_id
+         if (awx_workflow_job_id | default('', true) not in ('', None, 'None'))
+         else 'None' }}
+
+  tasks:
+    # ------------------------------------------------------------------
+    # Block: SMF Record Flood (alert 1607 — C2P1607I)
+    # Triggered when the event arrives under ansible_eda.events.c2p1607i.
+    # Add more tasks inside this block for richer C2P1607I handling.
+    # ------------------------------------------------------------------
+    - name: Handle SMF Record Flood event
+      when: ansible_eda.events is defined and ansible_eda.events.c2p1607i is defined
+      block:
+        - name: Log C2P1607I event body
+          community.general.slack:
+            token: "{{ slack_token }}"
+            parse: none
+            msg: |
+              *zSecure EDA Alert Code — {{ ansible_eda.events.c2p1607i.body.alert_code }}*
+              *Host:* `{{ ansible_eda.events.c2p1607i.body.hostname }}`
+              *Alert:* `{{ ansible_eda.events.c2p1607i.body.alert_message }}`
+              *SMF Record Type:* `{{ smf_record_type | default('N/A', true) }}`
+              *View Response Workflow:* <{{ workflow_url }}|Run ID {{ awx_workflow_job_id }}>
+
+    # ------------------------------------------------------------------
+    # Block: Standard alert — post Slack notification
+    # Fallback for all events arriving under ansible_eda.event.body.*.
+    # Add more tasks inside this block for richer Slack handling.
+    # ------------------------------------------------------------------
+    - name: Handle standard alert
+      when: ansible_eda.event is defined
+      block:
+        - name: Post message to Slack
+          community.general.slack:
+            token: "{{ slack_token }}"
+            parse: 'none'
+            msg: |
+              *zSecure EDA Alert Code — {{ ansible_eda.event.body.alert_code | default('N/A', true) }}*
+              *Host:* `{{ ansible_eda.event.body.hostname | default('N/A', true) }}`
+              *Alert:* `{{ ansible_eda.event.body.alert_message | default('N/A', true) }}`
+              *View Response Workflow:* <{{ workflow_url }} | Run ID {{ awx_workflow_job_id }}>
