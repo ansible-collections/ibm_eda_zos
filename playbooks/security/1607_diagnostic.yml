@@ -1,17 +1,33 @@
 ################################################################################
 # Copyright (c) IBM Corporation 2026
 ################################################################################
+
+################################################################################
+# This playbook captures system diagnostics when zSecure alert C2P1607I
+# (SMF Record Flood) is detected.
 #
-# Capture diagnostics for zSecure Alert C2P1607I (SMF Record Flood).
+# Workflow position: Job 1 of 3
 #
-# This playbook:
-#   1. Captures the current SMF status using D SMF.
-#   2. Extracts the flooded SMF record type from the correlated IFA780A event.
-#   3. Publishes the derived values for downstream workflow notification jobs.
+# It is launched as the first job in the EDA - SMF 1607 Response Workflow,
+# triggered by the 1607_SMF_Flood_Alert rulebook. The playbook issues the
+# `D SMF` operator command to capture the current SMF recording status on
+# the target z/OS system, extracts the flooded SMF record type from the
+# correlated IFA780A WTO message using a regex pattern, and publishes the
+# derived values for use by downstream notification jobs in the same workflow.
 #
-# Published workflow artifacts:
-#   - smf_record_type
-#   - d_smf_output
+# Required configuration:
+# - `system_environment` must provide the environment needed to run z/OS tasks.
+# - The target host must be reachable and capable of running
+#   `ibm.ibm_zos_core.zos_operator`.
+# - The `ibm.ibm_zos_core` collection must be installed and available.
+# - The executing identity must have authority to issue the `D SMF` command.
+# - This playbook must run inside the EDA - SMF 1607 Response Workflow so
+#   that `ansible_eda.events.c2p1607i` and `ansible_eda.events.ifa780a` are
+#   populated.
+#
+# Published workflow artifacts (via set_stats):
+#   - smf_record_type  : the flooded SMF record type number, or UNKNOWN
+#   - d_smf_output     : formatted output of the D SMF operator command
 ################################################################################
 
 ---
@@ -20,10 +36,16 @@
   gather_facts: false
   environment: "{{ system_environment }}"
 
+  vars:
+    # flood_wto_message: the IFA780A WTO message text, read directly from the
+    # correlated EDA event. Used to extract the flooded SMF record type in the
+    # regex step below.
+    flood_wto_message: "{{ ansible_eda.events.ifa780a.body.alert_message | default('N/A', true) }}"
+
   tasks:
 
     ###########################################################################
-    # STEP 1 - Capture current SMF status
+    # Capture current SMF status
     ###########################################################################
 
     - name: Query current SMF status
@@ -31,6 +53,8 @@
         cmd: "D SMF"
       register: smf_status
 
+    # smf_status.content is a list of output lines from zos_operator.
+    # Join them into a single labelled string for rendering in the email template.
     - name: Build D SMF output
       ansible.builtin.set_fact:
         d_smf_output: |
@@ -38,16 +62,15 @@
           {{ smf_status.content | default([]) | join('\n') }}
 
     ###########################################################################
-    # STEP 2 - Extract SMF record type from correlated IFA780A message
+    # Extract SMF record type from correlated IFA780A message
     ###########################################################################
-    
+
     - name: Extract SMF record type from IFA780A message
       ansible.builtin.set_fact:
         smf_record_type: >-
           {{
             (
               flood_wto_message
-              | default('', true)
               | regex_search('TYPE\s+([0-9]+)', '\1')
               | default([], true)
             )
@@ -56,7 +79,7 @@
           }}
 
     ###########################################################################
-    # STEP 3 - Display diagnostic summary
+    # Display diagnostic summary
     ###########################################################################
 
     - name: Display SMF flood diagnostic summary
@@ -68,10 +91,9 @@
           - "Alert Code: {{ ansible_eda.events.c2p1607i.body.alert_code }}"
           - "SMF Record Type: {{ smf_record_type }}"
           - "Hostname: {{ ansible_eda.events.c2p1607i.body.hostname }}"
-          - "Flood Detected At: {{ ansible_eda.events.ifa780a.meta.received_at }}"
 
     ###########################################################################
-    # STEP 4 - Publish derived diagnostics for downstream workflow jobs
+    # Publish derived diagnostics for downstream workflow jobs
     ###########################################################################
 
     - name: Publish derived diagnostic results
@@ -79,4 +101,3 @@
         data:
           smf_record_type: "{{ smf_record_type }}"
           d_smf_output: "{{ d_smf_output }}"
-      delegate_to: localhost

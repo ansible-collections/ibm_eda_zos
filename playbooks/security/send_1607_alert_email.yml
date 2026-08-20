@@ -1,0 +1,66 @@
+################################################################################
+# Copyright (c) IBM Corporation 2026
+################################################################################
+
+################################################################################
+# This playbook sends an HTML email notification to security administrators
+# when zSecure alert C2P1607I (SMF Record Flood) is detected.
+#
+# Workflow position: Job 2 of 3
+# It is launched as the second job in the EDA - SMF 1607 Response Workflow,
+# triggered by the 1607_SMF_Flood_Alert rulebook. The playbook renders an
+# HTML email body from the `templates/smf_1607_alert_email.html.j2` Jinja2
+# template, incorporating alert details from both correlated EDA events
+# (C2P1607I and IFA780A) and the diagnostic output produced by the preceding
+# 1607_diagnostic playbook. The notification is sent to the configured
+# security recipients via SMTP.
+#
+# Required configuration:
+# - `security_alert_recipients` must list the email addresses to notify.
+# - `security_alert_sender` must provide the sender email address.
+# - `smtp_server` and `smtp_server_port` must identify the SMTP server.
+# - `aap_controller_host` must be set to build the workflow URL in the email.
+# - The `smf_1607_alert_email.html.j2` and `racf_alert_base.html.j2` template
+#   files must be present in the playbook's `templates/` directory.
+# - This playbook must run inside the EDA - SMF 1607 Response Workflow so
+#   that `ansible_eda.events.c2p1607i` and `ansible_eda.events.ifa780a` are
+#   populated.
+# - The `smf_record_type` and `d_smf_output` variables should be published
+#   by the preceding 1607_diagnostic playbook via `set_stats`.
+################################################################################
+
+---
+- name: Send an email to notify of an SMF Record Flood alert
+  hosts: "{{ target_hosts | default('localhost') }}"
+  gather_facts: false
+
+  vars:
+    # Email configuration
+    email_recipients: "{{ security_alert_recipients }}"
+    email_from: "{{ security_alert_sender }}"
+    smtp_host: "{{ smtp_server }}"
+    smtp_port: "{{ smtp_server_port }}"
+
+    # Build workflow URL when running inside an AAP workflow
+    workflow_url: >-
+      {{ 'https://' ~ aap_controller_host ~ '/execution/jobs/workflow/' ~ awx_workflow_job_id
+         if (awx_workflow_job_id | default('', true) not in ('', None, 'None'))
+         else 'None' }}
+
+  tasks:
+
+    - name: Build HTML notification body
+      ansible.builtin.set_fact:
+        notification_body_html: "{{ lookup('template', 'templates/smf_1607_alert_email.html.j2') }}"
+
+
+    - name: Send email notification for SMF Flood Alert 1607
+      community.general.mail:
+        host: "{{ smtp_host | default('localhost') }}"
+        port: "{{ smtp_port }}"
+        to: "{{ email_recipients }}"
+        from: "{{ email_from }}"
+        subject: "zSecure alert - {{ ansible_eda.events.c2p1607i.body.alert_message }}"
+        subtype: html
+        body: "{{ notification_body_html }}"
+      delegate_to: localhost

@@ -1,6 +1,25 @@
 ###############################################################################
 # Copyright (c) IBM Corporation 2026
 ###############################################################################
+#
+# This rulebook monitors SMF record flood events delivered through Kafka. It
+# uses event correlation to match the IFA780A WTO message (SMF record flood
+# filter) with the corresponding zSecure alert C2P1607I.
+#
+# When both events are detected within the correlation window, the rulebook
+# launches the AAP workflow template "EDA - SMF 1607 Response Workflow" in
+# the Default organization.
+#
+# Required configuration:
+# - Kafka connectivity values must be provided for kafka_topic, kafka_host,
+#   kafka_port, security_protocol, and cafile.
+# - The Kafka source must receive both zSecure alert events and WTO messages
+#   in the expected format.
+# - The ibm.ibm_eda_zos.security_alerts filter plugin must be available.
+# - The workflow template "EDA - SMF 1607 Response Workflow" must exist and
+#   be accessible to the rulebook.
+# - Both events must arrive within the 90-second correlation window.
+###############################################################################
 
 ---
 - name: Rule to handle alert 1607 - SMF Record Flood
@@ -27,14 +46,9 @@
         all:
           - events.ifa780a << event.body.message is regex("IFA780A SMF RECORD FLOOD MSG FILTER FOR TYPE")
           - events.c2p1607i << event.body.alert_code == "C2P1607I"
-        timeout: 60 seconds
+        timeout: 90 seconds
 
       action:
         run_workflow_template:
           name: "EDA - SMF 1607 Response Workflow"
           organization: "Default"
-
-          job_args:
-            extra_vars:
-              flood_wto_message: "{{ events.ifa780a.body.message }}"
-              flood_detected_at: "{{ events.ifa780a.meta.received_at }}"
