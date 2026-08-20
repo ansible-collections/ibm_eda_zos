@@ -1,0 +1,40 @@
+###############################################################################
+# Copyright (c) IBM Corporation 2026
+###############################################################################
+
+---
+- name: Rule to handle alert 1607 - SMF Record Flood
+  hosts: all
+
+  sources:
+    - name: kafka
+      ansible.eda.kafka:
+        topic: "{{ kafka_topic }}"
+        host: "{{ kafka_host }}"
+        port: "{{ kafka_port }}"
+        security_protocol: "{{ security_protocol }}"
+        ssl_cafile: "{{ cafile }}"
+        check_hostname: true
+
+      filters:
+        - ibm.ibm_eda_zos.security_alerts:
+            event_source: "kafka"
+
+  rules:
+    - name: Handle SMF Record Flood - C2P1607I
+
+      condition:
+        all:
+          - events.ifa780a << event.body.message is regex("IFA780A SMF RECORD FLOOD MSG FILTER FOR TYPE")
+          - events.c2p1607i << event.body.alert_code == "C2P1607I"
+        timeout: 60 seconds
+
+      action:
+        run_workflow_template:
+          name: "EDA - SMF 1607 Response Workflow"
+          organization: "Default"
+
+          job_args:
+            extra_vars:
+              flood_wto_message: "{{ events.ifa780a.body.message }}"
+              flood_detected_at: "{{ events.ifa780a.meta.received_at }}"
