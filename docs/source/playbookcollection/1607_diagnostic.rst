@@ -84,9 +84,9 @@ Step 2: Extract the flooded SMF record type
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Parses the ``flood_wto_message`` variable — resolved from ``ansible_eda.events.ifa780a.body.alert_message``
-in the ``vars:`` block — using a regex pattern (``TYPE\s+([0-9]+)``) to extract the numeric SMF
+in the ``vars:`` block — using a regex pattern to extract the numeric SMF
 record type that triggered the flood filter. If the pattern does not match — for example, if the
-message text is absent or malformed — the variable is set to ``UNKNOWN`` so the workflow can
+message text is absent or malformed,the variable is set to ``UNKNOWN`` so the workflow can
 continue without interruption.
 
 Step 3: Display diagnostic summary
