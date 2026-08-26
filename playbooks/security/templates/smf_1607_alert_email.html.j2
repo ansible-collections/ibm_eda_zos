@@ -7,6 +7,7 @@
     <b>Alert Code:</b> {{ ansible_eda.events.c2p1607i.body.alert_code }}<br/>
     <b>Hostname:</b> {{ ansible_eda.events.c2p1607i.body.hostname }}<br/>
     <b>SMF Record Type:</b> {{ smf_record_type | default('UNKNOWN', true) }}<br/>
+    <b>Flood Time:</b> {{ smf_flood_time | default('UNKNOWN', true) }}
   </p>
 </div>
 

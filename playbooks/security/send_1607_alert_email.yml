@@ -53,7 +53,6 @@
       ansible.builtin.set_fact:
         notification_body_html: "{{ lookup('template', 'templates/smf_1607_alert_email.html.j2') }}"
 
-
     - name: Send email notification for SMF Flood Alert 1607
       community.general.mail:
         host: "{{ smtp_host | default('localhost') }}"
@@ -64,3 +63,4 @@
         subtype: html
         body: "{{ notification_body_html }}"
       delegate_to: localhost
+      

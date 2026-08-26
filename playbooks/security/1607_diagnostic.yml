@@ -11,9 +11,9 @@
 # It is launched as the first job in the EDA - SMF 1607 Response Workflow,
 # triggered by the 1607_SMF_Flood_Alert rulebook. The playbook issues the
 # `D SMF` operator command to capture the current SMF recording status on
-# the target z/OS system, extracts the flooded SMF record type from the
-# correlated IFA780A WTO message using a regex pattern, and publishes the
-# derived values for use by downstream notification jobs in the same workflow.
+# the target z/OS system, extracts the flooded SMF record type and flood time
+# from the correlated IFA780A WTO message using a regex pattern, and publishes
+# the derived values for use by downstream notification jobs in the same workflow.
 #
 # Required configuration:
 # - `system_environment` must provide the environment needed to run z/OS tasks.
@@ -27,6 +27,7 @@
 #
 # Published workflow artifacts (via set_stats):
 #   - smf_record_type  : the flooded SMF record type number, or UNKNOWN
+#   - smf_flood_time  : the flood detection time from the IFA780A message
 #   - d_smf_output     : formatted output of the D SMF operator command
 ################################################################################
 
@@ -62,7 +63,7 @@
           {{ smf_status.content | default([]) | join('\n') }}
 
     ###########################################################################
-    # Extract SMF record type from correlated IFA780A message
+    # Extract SMF record type and flood time from correlated IFA780A message
     ###########################################################################
 
     - name: Extract SMF record type from IFA780A message
@@ -78,6 +79,18 @@
             | default('UNKNOWN', true)
           }}
 
+    - name: Extract SMF flood time from IFA780A message
+      ansible.builtin.set_fact:
+        smf_flood_time: >-
+          {{
+            (
+              flood_wto_message
+              | regex_findall('(\d{1,2}\.\d{2}\.\d{2})')
+              | first
+              | default('UNKNOWN', true)
+            )
+          }}
+
     ###########################################################################
     # Display diagnostic summary
     ###########################################################################
@@ -90,6 +103,7 @@
           - "=========================================="
           - "Alert Code: {{ ansible_eda.events.c2p1607i.body.alert_code }}"
           - "SMF Record Type: {{ smf_record_type }}"
+          - "Flood Time: {{ smf_flood_time }}"
           - "Hostname: {{ ansible_eda.events.c2p1607i.body.hostname }}"
 
     ###########################################################################
@@ -100,4 +114,5 @@
       ansible.builtin.set_stats:
         data:
           smf_record_type: "{{ smf_record_type }}"
+          smf_flood_time: "{{ smf_flood_time }}"
           d_smf_output: "{{ d_smf_output }}"
