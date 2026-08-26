@@ -1,0 +1,15 @@
+minor_changes:
+  - Added ``dataset`` sub-object to ``security_alerts`` event filter with fields
+    ``dataset_name``, ``pds_member``, ``volume_serial``, and ``program_name``
+    for extracting z/OS data set attributes from predefined zSecure alert messages.
+  - Added ``resource`` sub-object to ``security_alerts`` event filter with fields
+    ``resource_class`` and ``resource_name`` for extracting RACF resource
+    information from predefined zSecure alert messages.
+  - Added ``smf`` sub-object to ``security_alerts`` event filter with fields
+    ``smf_record_type``, ``smf_subsystem``, ``smf_records_lost``, and
+    ``wto_msgid`` for extracting SMF and WTO diagnostic data from predefined
+    zSecure alert messages.
+  - Added ``unix_path``, ``access_level``, ``authority_type``, and
+    ``user_category`` fields to ``security_alerts`` event filter for
+    extracting UNIX path, access, and authority metadata from predefined zSecure
+    alert messages.
