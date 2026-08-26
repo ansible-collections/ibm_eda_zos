@@ -18,7 +18,7 @@ Synopsis
   This ensures the data is in the ideal format by bringing valuable attributes like usernames, group names, data set names, and security 
   metadata to the top level to easily use for your rule conditions.
 
-* The event filter currently supports zSecure pre-defined user related alerts. For more information, see `User alerts <https://www.ibm.com/docs/en/szs/3.1.0?topic=alerts-user>`_.
+* The event filter currently supports zSecure pre-defined alerts.
 
 Parameters
 ----------
@@ -82,7 +82,7 @@ Top-level attributes
    * - action_user
      - string | null if not available
      - User that is performing an action
-     - 1105, 1106, 1119, 1410, 1701
+     - 1105, 1106, 1119, 1121, 1201, 1202, 1203, 1204, 1209, 1210, 1211, 1212, 1213, 1214, 1215, 1216, 1302, 1303, 1304, 1305, 1306, 1307, 1401, 1402, 1403, 1404, 1405, 1406, 1409, 1410, 1411, 1501, 1502, 1503, 1506, 1507, 1701
    * - group_name
      - string | null if not available
      - RACF group name
@@ -94,11 +94,11 @@ Top-level attributes
    * - job_name
      - string | null if not available
      - Job name that is referred to
-     - 1101, 1301
+     - 1101, 1301, 1302, 1804, 1805, 1806
    * - target_user
      - string | null if not available
      - User that an action is performed upon
-     - 1101, 1102, 1103, 1104, 1105, 1106, 1107, 1108, 1109, 1110, 1111, 1112, 1113, 1114, 1115, 1119, 1120, 1121, 1122, 1123, 1124
+     - 1102, 1103, 1104, 1105, 1106, 1107, 1108, 1109, 1110, 1111, 1112, 1113, 1114, 1115, 1119, 1120, 1121, 1122, 1123, 1124, 1407, 1410, 1411, 1701
    * - unix_path
      - string | null if not available
      - UNIX file or directory path
@@ -106,7 +106,7 @@ Top-level attributes
    * - access_level
      - string | null if not available
      - Access level (e.g. READ, UPDATE, ALTER)
-     - 1110, 1201, 1202, 1203, 1209, 1210, 1211, 1212, 1213, 1303, 1304, 1402, 1403
+     - 1110, 1201, 1202, 1203, 1209, 1210, 1211, 1212, 1213, 1214, 1303, 1304, 1402, 1403
    * - authority_type
      - string | null if not available
      - Authority type (e.g. SPECIAL, OPERATIONS)
@@ -114,7 +114,7 @@ Top-level attributes
    * - user_category
      - string | null if not available
      - User category (e.g. non-SPECIAL, non-OPERATIONS)
-     - 1109
+     - 1109, 1110
 
 ``dataset`` sub-dictionary
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -134,7 +134,7 @@ Top-level attributes
    * - dataset.pds_member
      - string | null if not available
      - PDS member name
-     - 1205, 1206, 1217, 1218
+     - 1214
    * - dataset.volume_serial
      - string | null if not available
      - Volume serial or SMS-managed indicator
@@ -181,16 +181,23 @@ Top-level attributes
      - 1607, 1608, 1611, 1616
    * - smf.smf_subsystem
      - string | null if not available
-     - SMF subsystem identifier (from ``SUBSYS:`` keyword)
-     - 1611
+     - SMF subsystem identifier
+     - 1616
    * - smf.smf_records_lost
      - string | null if not available
      - Number of SMF records lost
-     - 1617
+     - 1602
    * - smf.wto_msgid
      - string | null if not available
-     - WTO message ID (from ``WTO msgid:`` keyword)
+     - WTO message ID
      - 1601, 1607, 1608
+
+.. note::
+
+   A ``null`` value for ``access_level`` means no access level was found in the alert message.
+   A string value of ``"NONE"`` means the attribute was found and the RACF access authority is
+   ``NONE`` — the lowest level in the RACF hierarchy, denoting no access granted. These two values
+   are not equivalent and should be treated as distinct when writing rule conditions.
 
 Input and output examples
 -------------------------
@@ -314,7 +321,70 @@ After event filter:
      unix_path: null
      user_category: null
 
+Example for alert code C2P1214I:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Before event filter:
+~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: json
+
+   {
+     "hasHeaderTopic": "true",
+     "headerName": "zOS-SYSLOG-Console:1.0.0",
+     "metadata": "sample_host.ibm.com,SYSLOG,1.0.0,zOS-SYSLOG-Console,ZOS_HOST-SYSLOG,-0400,XESDEV,ZOS_HOST,1774419235120",
+     "message": "N ,0057,25267 00.00.00.000 -0700,ZOS_HOST,STCXXXXX,        ,00800000000000000000000000000000,00000010,C2POLICE,00,\" C2P1214I REPLACE action by C##ASCH on UPDATE sensitive member IEASYS81 in data set USER.PARMLIB \""
+   }
+
+
+After event filter:
+~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: yaml
+
+   body:
+     access_level: UPDATE
+     action_user: C##ASCH
+     alert_code: C2P1214I
+     alert_message: C2P1214I REPLACE action by C##ASCH on UPDATE sensitive member IEASYS81 in data set USER.PARMLIB
+     authority_type: null
+     dataset:
+       dataset_name: USER.PARMLIB
+       pds_member: IEASYS81
+       program_name: null
+       volume_serial: null
+     group_name: null
+     hasHeaderTopic: 'true'
+     headerName: zOS-SYSLOG-Console:1.0.0
+     hostname: sample_host.ibm.com
+     ip_address: null
+     job_name: null
+     message: >-
+       N ,0057,25267 00.00.00.000 -0700,ZOS_HOST,STCXXXXX,        ,00800000000000000000000000000000,00000010,C2POLICE,00,"
+       C2P1214I REPLACE action by C##ASCH on UPDATE sensitive member IEASYS81
+       in data set USER.PARMLIB "
+     metadata: >-
+       sample_host.ibm.com,SYSLOG,1.0.0,zOS-SYSLOG-Console,ZOS_HOST-SYSLOG,-0400,XESDEV,ZOS_HOST,1774419235120
+     resource:
+       resource_class: null
+       resource_name: null
+     smf:
+       smf_record_type: null
+       smf_records_lost: null
+       smf_subsystem: null
+       wto_msgid: null
+     target_user: null
+     unix_path: null
+     user_category: null
 
 .. note::
 
     Currently, only **kafka** is supported as the event source and events from other sources pass through as unchanged.
+
+.. note::
+
+   The attributes listed above were chosen based on the zSecure pre-defined alerts.
+   The **Sample Alerts Supported** column identifies which alerts each attribute applies to. If the
+   event filter is applied to an unsupported alert, the event may pass through unchanged or the
+   extracted attributes may be inaccurate, as the message structure of those alerts is not guaranteed
+   to match the patterns the filter expects.
