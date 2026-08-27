@@ -13,7 +13,7 @@
 #
 # Required configuration:
 # - Kafka connectivity values must be provided for `kafka_topic`,
-#   `kafka_host`, `kafka_port`, `security_protocol`, and `ssl_cafile`.
+#   `kafka_host`, `kafka_port`, `security_protocol`, and `cafile`.
 # - The Kafka source must receive zSecure alert events in the expected format.
 # - The `ibm.ibm_eda_zos.security_alerts` event filter plugin must be available.
 # - The workflow template `EDA - Alert 1212 Response Workflow` must exist and be
@@ -30,7 +30,7 @@
         host: "{{ kafka_host }}"
         port: "{{ kafka_port }}"
         security_protocol: "{{ security_protocol }}"
-        cafile: "{{ cafile }}"
+        ssl_cafile: "{{ cafile }}"
         check_hostname: true
 
       filters:
