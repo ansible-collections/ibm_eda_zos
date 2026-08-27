@@ -35,7 +35,7 @@ From the EDA event context
 
 These variables are available automatically to all jobs in an EDA-launched workflow through
 ``ansible_eda.events``. This playbook must run inside the **EDA - SMF 1607 Response Workflow**;
-running it standalone will cause these references to be undefined.
+the workflow must be triggered by the EDA rulebook for these references to be populated.
 
 ansible_eda.events.c2p1607i.body.alert_code
   The zSecure alert code, always ``C2P1607I`` for this workflow.
@@ -135,9 +135,8 @@ Step 1: Build the workflow URL
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Constructs a direct URL to the AAP workflow job using ``aap_controller_host`` and the built-in
-``awx_workflow_job_id`` variable. If ``awx_workflow_job_id`` is not set (for example, when the
-playbook is tested outside a workflow), the URL is set to ``None`` and the link is omitted from
-the email body.
+``awx_workflow_job_id`` variable. If ``awx_workflow_job_id`` is not set, the URL is set to
+``None`` and the link is omitted from the email body.
 
 Step 2: Render the HTML notification body
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -247,7 +246,7 @@ Template notes
 * The ``smf_record_type`` and ``smf_flood_time`` fields both use ``| default('UNKNOWN', true)``
   so the email renders cleanly even if the diagnostic step could not extract either value.
 * The ``workflow_url`` conditional (``{% if workflow_url != 'None' %}``) suppresses the
-  **Response Workflow** link when the playbook is run outside an AAP workflow.
+  **Response Workflow** link when ``awx_workflow_job_id`` is not set.
 * The ``d_smf_output`` conditional (``{% if d_smf_output is defined and d_smf_output %}``)
   omits the entire Diagnostics section when no ``D SMF`` output is available.
 * The base template name (``racf_alert_base.html.j2``) carries a ``racf_`` prefix because it is

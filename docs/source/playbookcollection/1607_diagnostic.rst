@@ -33,7 +33,7 @@ From the EDA event context
 
 These variables are available automatically to all jobs in an EDA-launched workflow through
 ``ansible_eda.events``. This playbook must run inside the **EDA - SMF 1607 Response Workflow**;
-running it standalone will cause these references to be undefined.
+the workflow must be triggered by the EDA rulebook for these references to be populated.
 
 ansible_eda.events.c2p1607i.body.alert_code
   The zSecure alert code, always ``C2P1607I`` for this workflow.
@@ -149,8 +149,8 @@ Prerequisites
 Notes
 -----
 
-* The playbook sets ``gather_facts: false`` to reduce execution time, as no Ansible facts are
-  required for the operator command or regex extraction.
+* The playbook sets ``gather_facts: false`` because no Ansible facts are required for the
+  operator command or regex extraction.
 * The ``D SMF`` operator task uses ``ignore_errors: true`` and ``ignore_unreachable: true`` so
   that a command failure or an unreachable host does not abort the workflow. If either condition
   occurs, the fallback task sets ``d_smf_output`` to ``D SMF command could not be executed.``
