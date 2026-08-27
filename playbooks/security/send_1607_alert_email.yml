@@ -63,4 +63,3 @@
         subtype: html
         body: "{{ notification_body_html }}"
       delegate_to: localhost
-      
