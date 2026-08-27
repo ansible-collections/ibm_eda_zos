@@ -208,7 +208,7 @@ Notes
 * If ``d_smf_output`` is undefined or empty, the Diagnostics section is omitted from the email
   body. The email is still sent with all other sections intact.
 * The workflow URL in the email body is only rendered when ``awx_workflow_job_id`` is set and
-  non-empty. In standalone test runs the link is suppressed.
+  non-empty. If the variable is not set, the link is omitted from the email body.
 * All output is written to the AAP job log. Restrict access to job logs if your security policy
   requires it.
 * This playbook is the second job in the **EDA - SMF 1607 Response Workflow**, executed after
