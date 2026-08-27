@@ -111,6 +111,13 @@ smf_record_type
 
   | **type**: str
 
+smf_flood_time
+  The flood detection time extracted from the IFA780A WTO message (format ``HH.MM.SS``).
+  Rendered in the alert summary box in the email body. Defaults to ``UNKNOWN`` if the diagnostic
+  playbook could not extract the value.
+
+  | **type**: str
+
 d_smf_output
   The formatted output of the ``D SMF`` operator command captured by the diagnostic playbook.
   Rendered in the Diagnostics section of the email body. The section is omitted from the email
@@ -139,7 +146,8 @@ Renders the ``templates/smf_1607_alert_email.html.j2`` Jinja2 template using
 ``ansible.builtin.set_fact`` with the ``lookup('template', ...)`` plugin. The rendered HTML
 incorporates:
 
-* Alert code, hostname, and SMF record type from the C2P1607I event and the diagnostic results.
+* Alert code, hostname, SMF record type, and flood detection time from the C2P1607I event and
+  the diagnostic results.
 * The full IFA780A WTO message text.
 * The automated action narrative.
 * An optional clickable link to the AAP response workflow job (when available).
@@ -167,9 +175,10 @@ Output
 The playbook produces one output:
 
 * An HTML email delivered to the configured security recipients. The email contains the alert
-  summary (alert code, hostname, SMF record type), the correlated IFA780A WTO message, the
-  automated action narrative, an optional link to the AAP workflow job, and — when available —
-  the ``D SMF`` diagnostic output captured by the preceding :ref:`1607_diagnostic` playbook.
+  summary (alert code, hostname, SMF record type, and flood detection time), the correlated
+  IFA780A WTO message, the automated action narrative, an optional link to the AAP workflow job,
+  and — when available — the ``D SMF`` diagnostic output captured by the preceding
+  :ref:`1607_diagnostic` playbook.
 
 * The AAP job output logs the email sending operation, including success or failure status and
   the resolved list of recipients.
@@ -185,7 +194,8 @@ Prerequisites
 * This playbook must run inside the **EDA - SMF 1607 Response Workflow** so that
   ``ansible_eda.events.c2p1607i`` and ``ansible_eda.events.ifa780a`` are populated.
 * The :ref:`1607_diagnostic` playbook should run before this playbook in the same workflow so
-  that ``smf_record_type`` and ``d_smf_output`` are available via ``set_stats``.
+  that ``smf_record_type``, ``smf_flood_time``, and ``d_smf_output`` are available via
+  ``set_stats``.
 
 
 Notes
@@ -217,8 +227,8 @@ Template structure
 
 The template renders the following sections in order:
 
-1. **Alert summary box** (``.alert-box``) — Displays the alert code, hostname, and resolved SMF
-   record type. This section is always rendered.
+1. **Alert summary box** (``.alert-box``) — Displays the alert code, hostname, resolved SMF
+   record type, and flood detection time. This section is always rendered.
 
 2. **Alert details box** (``.info-box``) — Displays the descriptive zSecure alert message, the
    full IFA780A WTO message text, the automated action narrative, and — when available — a
@@ -234,8 +244,8 @@ The template renders the following sections in order:
 Template notes
 ~~~~~~~~~~~~~~
 
-* The ``smf_record_type`` field uses ``| default('UNKNOWN', true)`` so the email renders cleanly
-  even if the diagnostic step could not extract the record type.
+* The ``smf_record_type`` and ``smf_flood_time`` fields both use ``| default('UNKNOWN', true)``
+  so the email renders cleanly even if the diagnostic step could not extract either value.
 * The ``workflow_url`` conditional (``{% if workflow_url != 'None' %}``) suppresses the
   **Response Workflow** link when the playbook is run outside an AAP workflow.
 * The ``d_smf_output`` conditional (``{% if d_smf_output is defined and d_smf_output %}``)
@@ -249,6 +259,6 @@ See also
 
 * The :ref:`1607_SMF_Flood_Alert` rulebook that triggers the response workflow.
 * The :ref:`1607_diagnostic` playbook that runs before this playbook and publishes
-  ``smf_record_type`` and ``d_smf_output``.
+  ``smf_record_type``, ``smf_flood_time``, and ``d_smf_output``.
 * To send the notification, see the `community.general.mail <https://docs.ansible.com/ansible/latest/collections/community/general/mail_module.html>`_ module.
 * Use the ``templates/smf_1607_alert_email.html.j2`` Jinja2 template for the email body.
