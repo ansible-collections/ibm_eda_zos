@@ -212,7 +212,7 @@ Notes
 * All output is written to the AAP job log. Restrict access to job logs if your security policy
   requires it.
 * This playbook is the second job in the **EDA - SMF 1607 Response Workflow**, executed after
-  :ref:`1607_diagnostic`. A third job (``send_alert_message``) will follow in a separate PR.
+  :ref:`1607_diagnostic`.
 
 
 Email template
