@@ -34,7 +34,7 @@ Rulebook
            host: "{{ kafka_host }}"
            port: "{{ kafka_port }}"
            security_protocol: "{{ security_protocol }}"
-           cafile: "{{ ssl_cafile }}"
+           ssl_cafile: "{{ cafile }}"
            check_hostname: true
 
          filters:
@@ -82,7 +82,7 @@ Connects to a Kafka broker to consume zSecure alert messages.
    :required: True
    :type: str
 
-**cafile**
+**ssl_cafile**
    Path to the CA certificate file used for SSL/TLS verification.
    
    :required: True (when using SSL)
@@ -175,7 +175,7 @@ When you activate the rulebook in Ansible Automation Platform, the following var
    kafka_host: "kafka.example.com"
    kafka_port: 9093
    security_protocol: "SSL"
-   ssl_cafile: "/path/to/ca-cert.pem"
+   cafile: "/path/to/ca-cert.pem"
 
 Examples
 --------
@@ -191,7 +191,7 @@ Create a rulebook activation in Ansible Automation Platform with the following a
    kafka_host: "kafka-broker.company.com"
    kafka_port: 9093
    security_protocol: "SSL"
-   ssl_cafile: "/etc/kafka/certs/ca-cert.pem"
+   cafile: "/etc/kafka/certs/ca-cert.pem"
 
 Example 2: Testing the Rule
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
