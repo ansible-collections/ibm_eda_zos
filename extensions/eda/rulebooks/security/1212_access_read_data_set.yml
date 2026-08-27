@@ -30,7 +30,7 @@
         host: "{{ kafka_host }}"
         port: "{{ kafka_port }}"
         security_protocol: "{{ security_protocol }}"
-        cafile: "{{ ssl_cafile }}"
+        cafile: "{{ cafile }}"
         check_hostname: true
 
       filters:
