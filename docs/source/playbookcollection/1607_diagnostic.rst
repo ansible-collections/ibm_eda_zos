@@ -99,8 +99,9 @@ interruption.
 Step 3: Extract the flood detection time
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Parses the same ``flood_wto_message`` variable using ``regex_findall`` to extract the time at which the flood was detected. If no
-time value is found in the message, the variable is set to ``UNKNOWN``.
+Parses the same ``flood_wto_message`` variable using ``regex_findall`` to extract the time at
+which the flood was detected. If no time value is found in the message, the variable is set to
+``UNKNOWN``.
 
 Step 4: Display diagnostic summary
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -159,10 +160,10 @@ Notes
   operator command produces a large response, the output is truncated to what the
   ``ibm.ibm_zos_core.zos_operator`` module returns.
 * If ``flood_wto_message`` is empty or does not contain the expected pattern, both
-  ``smf_record_type`` and ``smf_flood_time`` are set to ``UNKNOWN``. Downstream jobs handle
-  this gracefully using the ``| default('UNKNOWN', true)`` filter in the Jinja2 template.
-* The debug task in Step 4 prints alert details to the AAP job log. Restrict access to job logs
-  if your security policy requires it.
+  ``smf_record_type`` and ``smf_flood_time`` are set to ``UNKNOWN`` and the email renders
+  cleanly with that placeholder value.
+* Step 4 logs alert details to the AAP job log. Restrict access to job logs if your security
+  policy requires it.
 * ``set_stats`` publishes data at the AAP workflow level, making all three variables available
   to all subsequent jobs in the workflow.
 

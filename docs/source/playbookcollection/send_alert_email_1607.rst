@@ -206,8 +206,6 @@ Notes
   AAP controller regardless of the value of ``target_hosts``.
 * If ``d_smf_output`` is undefined or empty, the Diagnostics section is omitted from the email
   body. The email is still sent with all other sections intact.
-* The workflow URL in the email body is only rendered when ``awx_workflow_job_id`` is set and
-  non-empty. If the variable is not set, the link is omitted from the email body.
 * All output is written to the AAP job log. Restrict access to job logs if your security policy
   requires it.
 * This playbook is the second job in the **EDA - SMF 1607 Response Workflow**, executed after
@@ -243,14 +241,13 @@ The template renders the following sections in order:
 Template notes
 ~~~~~~~~~~~~~~
 
-* The ``smf_record_type`` and ``smf_flood_time`` fields both use ``| default('UNKNOWN', true)``
-  so the email renders cleanly even if the diagnostic step could not extract either value.
-* The ``workflow_url`` conditional (``{% if workflow_url != 'None' %}``) suppresses the
-  **Response Workflow** link when ``awx_workflow_job_id`` is not set.
-* The ``d_smf_output`` conditional (``{% if d_smf_output is defined and d_smf_output %}``)
-  omits the entire Diagnostics section when no ``D SMF`` output is available.
-* The base template name (``racf_alert_base.html.j2``) carries a ``racf_`` prefix because it is
-  shared across all zSecure alert email templates in this collection, not only SMF alerts.
+* The ``smf_record_type`` and ``smf_flood_time`` fields render as ``UNKNOWN`` if the diagnostic
+  playbook could not extract either value.
+* The **Response Workflow** link is omitted from the email when ``awx_workflow_job_id`` is not
+  set.
+* The Diagnostics section is omitted from the email when ``d_smf_output`` is not available.
+* The base template ``racf_alert_base.html.j2`` carries a ``racf_`` prefix because it is shared
+  across all zSecure alert email templates in this collection, not only SMF alerts.
 
 
 See also
