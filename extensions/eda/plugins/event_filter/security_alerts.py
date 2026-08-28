@@ -1,8 +1,6 @@
 ##############################################################################
 # Copyright (c) IBM Corporation 2026
-##############################################################################
 
-# Copyright (c) IBM Corporation 2026
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -12,6 +10,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+##############################################################################
+
 
 """Event filter plugin for processing zSecure user related security alerts.
 
@@ -460,8 +460,7 @@ def _get_volume_serial(string: str) -> str | None:
         not found
 
     """
-    pattern = re.search(r"on volume\s+([A-Z0-9]{1,6}|<[^>]+>)", string,
-                        re.IGNORECASE)
+    pattern = re.search(r"(?i:on volume)\s+([A-Z0-9]{1,6}|<[^>]+>)", string)
     return pattern.group(1) if pattern is not None else None
 
 
@@ -851,6 +850,8 @@ def _get_action_user_name(string: str) -> str | None:
 
                 if candidate == "user" and idx < len(string_split) - 2:
                     candidate = string_split[idx + 2]
+                    if not _is_valid_userid(candidate):
+                        continue
 
                 if any(c.islower() for c in candidate):
                     continue
@@ -894,7 +895,7 @@ def main(event: dict[str, Any], event_source: str | None = None) -> (
     -----
     Fields added to ``event['body']``:
 
-    - ``alert_msg`` : str — full alert message text
+    - ``alert_message`` : str — full alert message text
     - ``alert_code`` : str — alert code identifier
     - ``hostname`` : str or None — source hostname
     - ``ip_address`` : str or None — IPv4 address
