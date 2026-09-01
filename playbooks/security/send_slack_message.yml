@@ -62,13 +62,13 @@
         - name: Log C2P1607I event body
           community.general.slack:
             token: "{{ slack_token }}"
-            parse: none
+            parse: 'none'
             msg: |
-              *zSecure EDA Alert Code — {{ ansible_eda.events.c2p1607i.body.alert_code }}*
-              *Host:* `{{ ansible_eda.events.c2p1607i.body.hostname }}`
-              *Alert:* `{{ ansible_eda.events.c2p1607i.body.alert_message }}`
+              *zSecure EDA Alert Code — {{ ansible_eda.events.c2p1607i.body.alert_code | default('N/A', true) }}*
+              *Host:* `{{ ansible_eda.events.c2p1607i.body.hostname | default('N/A', true) }}`
+              *Alert:* `{{ ansible_eda.events.c2p1607i.body.alert_message | default('N/A', true) }}`
               *SMF Record Type:* `{{ smf_record_type | default('N/A', true) }}`
-              *View Response Workflow:* <{{ workflow_url }}|Run ID {{ awx_workflow_job_id }}>
+              *View Response Workflow:* <{{ workflow_url }} | Run ID {{ awx_workflow_job_id }}>
 
     # ------------------------------------------------------------------
     # Block: Standard alert — post Slack notification
