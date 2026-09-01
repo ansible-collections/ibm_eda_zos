@@ -1,0 +1,5 @@
+minor_changes:
+  - Added rulebook *1212_access_read_data_set* for detecting READ-or-higher
+    access to sensitive data sets (alert 1212)
+  - Added playbook *send_slack_message* for sending Slack notifications to
+    security administrators when a zSecure alert is detected
