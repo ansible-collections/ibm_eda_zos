@@ -6,8 +6,9 @@
 # This playbook sends an HTML email notification to security administrators
 # when zSecure alert C2P1607I (SMF Record Flood) is detected.
 #
-# Workflow position: Job 2 of 3
-# It is launched as the second job in the EDA - SMF 1607 Response Workflow,
+# Workflow Stage: Email Notification
+#
+# It is launched as part of the EDA - SMF 1607 Response Workflow,
 # triggered by the 1607_SMF_Flood_Alert rulebook. The playbook renders an
 # HTML email body from the `templates/smf_1607_alert_email.html.j2` Jinja2
 # template, incorporating alert details from both correlated EDA events

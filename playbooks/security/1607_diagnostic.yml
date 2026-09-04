@@ -6,9 +6,9 @@
 # This playbook captures system diagnostics when zSecure alert C2P1607I
 # (SMF Record Flood) is detected.
 #
-# Workflow position: Job 1 of 3
+# Workflow Stage: Diagnostics Capture
 #
-# It is launched as the first job in the EDA - SMF 1607 Response Workflow,
+# It is launched as part of the EDA - SMF 1607 Response Workflow,
 # triggered by the 1607_SMF_Flood_Alert rulebook. The playbook issues the
 # `D SMF` operator command to capture the current SMF recording status on
 # the target z/OS system, extracts the flooded SMF record type and flood time
