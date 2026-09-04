@@ -1,0 +1,8 @@
+minor_changes:
+  - Added rulebook for detecting SMF record flood events using two-event correlation
+    between the IFA780A WTO message and zSecure alert C2P1607I (alert 1607)
+  - Created *1607_diagnostic* playbook to capture D SMF output and extract the
+    flooded SMF record type from the correlated IFA780A event
+  - Added *smf_1607_alert_email* HTML email template for formatted SMF record flood
+    alert notifications including alert summary, correlated IFA780A message, and
+    D SMF diagnostic output
