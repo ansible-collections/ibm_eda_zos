@@ -1,0 +1,56 @@
+{% include 'racf_alert_base.html.j2' %}
+
+<h3>zSecure Alert: SMF Record Flood Detected</h3>
+
+<div class="alert-box">
+  <p>
+    <b>Alert Code:</b> {{ ansible_eda.events.c2p1607i.body.alert_code }}<br/>
+    <b>Hostname:</b> {{ ansible_eda.events.c2p1607i.body.hostname }}<br/>
+    <b>SMF Record Type:</b> {{ smf_record_type | default('UNKNOWN', true) }}<br/>
+    <b>Flood Time:</b> {{ smf_flood_time | default('UNKNOWN', true) }}
+  </p>
+</div>
+
+<h4>Alert Details</h4>
+
+<div class="info-box">
+  <p>
+    <b>zSecure Alert:</b>
+    {{ ansible_eda.events.c2p1607i.body.alert_message }}
+  </p>
+
+  <p>
+    <b>Correlated IFA780A Message:</b><br/>
+    {{ ansible_eda.events.ifa780a.body.alert_message }}
+  </p>
+
+  <p>
+    <b>Automated Action Taken:</b><br/>
+    Event-Driven Ansible detected the SMF record flood, captured system diagnostics,
+    and initiated the automated response workflow.
+  </p>
+
+  {% if workflow_url != 'None' %}
+  <p>
+    <b>Response Workflow:</b>
+    <a href="{{ workflow_url }}">{{ workflow_url }}</a>
+  </p>
+  {% endif %}
+</div>
+
+{% if d_smf_output is defined and d_smf_output %}
+<h4>Diagnostics</h4>
+
+<div class="warning-box">
+  <pre>{{ d_smf_output }}</pre>
+</div>
+{% endif %}
+
+<hr/>
+
+<p style="font-size: 0.9em; color: #666;">
+  <i>Automated alert from Event-Driven Ansible monitoring zSecure C2P1607I events.</i>
+</p>
+
+</body>
+</html>
