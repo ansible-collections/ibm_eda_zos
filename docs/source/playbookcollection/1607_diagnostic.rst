@@ -18,11 +18,11 @@ Synopsis
 
 Capture system diagnostics when zSecure alert C2P1607I (SMF Record Flood) is detected.
 
-This playbook is launched as the first job in the **EDA - SMF 1607 Response Workflow**, which is
-triggered by the :ref:`1607_SMF_Flood_Alert` rulebook. The playbook issues the ``D SMF`` operator
+This playbook runs as the first job in the **EDA - SMF 1607 Response Workflow**, which the
+:ref:`1607_SMF_Flood_Alert` rulebook triggers. The playbook issues the ``D SMF`` operator
 command to capture the current SMF recording status on the target z/OS system, extracts the
-flooded SMF record type and flood detection time from the correlated IFA780A WTO message, and
-publishes the derived values for use by downstream notification jobs in the same workflow.
+SMF record type and flood detection time from the correlated IFA780A WTO message, and
+publishes the derived values for downstream notification jobs in the same workflow.
 
 
 Variables
@@ -47,7 +47,7 @@ ansible_eda.events.c2p1607i.body.hostname
 
 ansible_eda.events.ifa780a.body.alert_message
   The IFA780A WTO message text. Read by the playbook ``vars:`` block as ``flood_wto_message``
-  and used to extract both the flooded SMF record type and the flood detection time via regex.
+  and used to extract both the SMF record type and the flood detection time by using a regular expression.
 
   | **type**: str
 
@@ -68,29 +68,29 @@ system_environment
   | **type**: dict
 
 
-Process walkthrough
--------------------
+How the playbook works
+----------------------
 
 The playbook runs in five steps.
 
 Step 1: Capture current SMF status
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Issues the ``D SMF`` operator command on the target z/OS system using the
+The playbook issues the ``D SMF`` operator command on the target z/OS system by using the
 ``ibm.ibm_zos_core.zos_operator`` module. Both ``ignore_errors: true`` and
 ``ignore_unreachable: true`` are set so that a command failure does not abort the workflow.
 
-If the command succeeds, the raw console response is formatted into the ``d_smf_output``
+If the command succeeds, the playbook formats the raw console response into the ``d_smf_output``
 variable, prefixed with a ``==== D SMF ====`` header for clarity in the notification email.
 If the command fails or the host is unreachable, a separate fallback task sets ``d_smf_output``
 to a static message (``D SMF command could not be executed.``) so that subsequent steps and
 the notification email always have a defined value.
 
-Step 2: Extract the flooded SMF record type
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Step 2: Extract the SMF record type
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Parses the ``flood_wto_message`` variable — resolved from
-``ansible_eda.events.ifa780a.body.alert_message`` in the ``vars:`` block — using
+The playbook parses the ``flood_wto_message`` variable — resolved from
+``ansible_eda.events.ifa780a.body.alert_message`` in the ``vars:`` block — by using
 ``regex_findall`` to extract the numeric SMF record type that
 triggered the flood filter. If the pattern does not match — for example, if the message text is
 absent or malformed — the variable is set to ``UNKNOWN`` so the workflow can continue without
@@ -99,21 +99,21 @@ interruption.
 Step 3: Extract the flood detection time
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Parses the same ``flood_wto_message`` variable using ``regex_findall`` to extract the time at
-which the flood was detected. If no time value is found in the message, the variable is set to
-``UNKNOWN``.
+The playbook parses the same ``flood_wto_message`` variable by using ``regex_findall`` to extract
+the time at which the flood was detected. If no time value is found in the message, the variable
+is set to ``UNKNOWN``.
 
 Step 4: Display diagnostic summary
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Logs a formatted summary to the AAP job output, including the alert code, resolved SMF record
-type, flood detection time, hostname, and ``D SMF`` command status (``Success`` or ``Failed``).
-This output is visible in the AAP job log for manual review.
+The playbook logs a formatted summary to the AAP job output, including the alert code, resolved
+SMF record type, flood detection time, hostname, and ``D SMF`` command status (``Success`` or
+``Failed``). This output is visible in the AAP job log for review.
 
 Step 5: Publish derived results for downstream jobs
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Publishes ``smf_record_type``, ``smf_flood_time``, and ``d_smf_output`` via
+The playbook publishes ``smf_record_type``, ``smf_flood_time``, and ``d_smf_output`` by using
 ``ansible.builtin.set_stats`` so they are available to subsequent jobs in the
 **EDA - SMF 1607 Response Workflow**, specifically the notification job that renders and sends
 the alert email.
@@ -122,7 +122,7 @@ the alert email.
 Output
 ------
 
-The playbook produces three workflow-level outputs via ``set_stats``:
+The playbook produces three workflow-level outputs by using ``set_stats``:
 
 * **smf_record_type**: The numeric SMF record type extracted from the IFA780A message, or
   ``UNKNOWN`` if extraction failed.
@@ -133,15 +133,15 @@ The playbook produces three workflow-level outputs via ``set_stats``:
 * **d_smf_output**: The formatted output of the ``D SMF`` operator command, including the
   ``==== D SMF ====`` header, or a fallback message if the command could not be executed.
 
-All three values are consumed by the :ref:`send_alert_email_1607` playbook to populate the HTML
-notification email.
+The :ref:`send_alert_email_1607` playbook uses all three values to populate the HTML notification
+email.
 
 
 Prerequisites
 -------------
 
 * The AAP job template must include a Machine credential for z/OS SSH access.
-* The z/OS user running the playbook must be authorised to issue the ``D SMF`` operator command.
+* The z/OS user running the playbook must be authorized to issue the ``D SMF`` operator command.
 * The ``ibm.ibm_zos_core`` collection must be installed in the execution environment.
 * This playbook must be run as a job inside the **EDA - SMF 1607 Response Workflow**, as it
   depends on ``ansible_eda.events`` being populated by the EDA rulebook.
@@ -162,8 +162,8 @@ Notes
 * If ``flood_wto_message`` is empty or does not contain the expected pattern, both
   ``smf_record_type`` and ``smf_flood_time`` are set to ``UNKNOWN`` and the email renders
   cleanly with that placeholder value.
-* Step 4 logs alert details to the AAP job log. Restrict access to job logs if your security
-  policy requires it.
+* Step 4 logs alert details to the AAP job log. Restrict access to job logs as required by your
+  security policy.
 * ``set_stats`` publishes data at the AAP workflow level, making all three variables available
   to all subsequent jobs in the workflow.
 
