@@ -15,16 +15,16 @@
 Synopsis
 --------
 
-This rulebook monitors SMF record flood events delivered through Kafka. It uses two-event
-correlation to match an IFA780A WTO message — indicating that SMF's internal message filter has
-triggered for a specific record type — with the corresponding zSecure alert C2P1607I confirming
+This rulebook monitors SMF record flood events that are delivered by Kafka. It uses two-event
+correlation to match an IFA780A WTO message, which indicates that the SMF internal message filter
+triggered for a specific record type, with the corresponding zSecure alert C2P1607I that confirms
 the flood condition.
 
-When both events are matched within the correlation window, the rulebook launches the configured
+When both events are matched within the correlation window, the rulebook starts the configured
 AAP workflow template to perform the response workflow.
 
-The correlation between two events reduces false positives by requiring confirmation from both
-the z/OS SMF subsystem (IFA780A) and zSecure (C2P1607I) before any automated action is taken.
+The two-event correlation reduces false positives by requiring confirmation from both the z/OS
+SMF subsystem (IFA780A) and zSecure (C2P1607I) before any automated action is taken.
 
 
 Rulebook
@@ -115,7 +115,7 @@ Connects to a Kafka broker to consume both zSecure alert messages and z/OS WTO m
 
 
 Filters
--------
+~~~~~~~
 
 **ibm.ibm_eda_zos.security_alerts**
 
@@ -132,7 +132,7 @@ reference do not exist in the raw Kafka payload.
 
 
 Rules
------
+~~~~~
 
 **Handle SMF Record Flood - C2P1607I**
 
@@ -173,8 +173,8 @@ Action
 
 Launches the AAP workflow template **EDA - SMF 1607 Response Workflow** in the Default
 organization. Both matched events are available to all workflow jobs through
-``ansible_eda.events.ifa780a`` and ``ansible_eda.events.c2p1607i``. The response workflow
-is documented on the corresponding playbook pages in this collection.
+``ansible_eda.events.ifa780a`` and ``ansible_eda.events.c2p1607i``. The workflow response is
+documented on the corresponding playbook pages in this collection.
 
 
 Event structure
@@ -224,9 +224,9 @@ Event c2p1607i body fields
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 * **alert_code**: the zSecure alert code (``C2P1607I``).
-* **alert_message**: descriptive message about the SMF record flood condition.
-* **hostname**: the z/OS system where the flood was detected.
-* **timestamp**: ISO 8601 timestamp of the alert.
+* **alert_message**: A descriptive message about the SMF record flood condition.
+* **hostname**: The z/OS system on which the flood was detected.
+* **timestamp**: The ISO 8601 timestamp of the alert.
 
 
 Variables
@@ -328,7 +328,7 @@ Notes
   decision environment for the conditions to evaluate correctly.
 * Before you activate the rulebook, ensure that the workflow template
   **EDA - SMF 1607 Response Workflow** exists and is accessible in AAP.
-* System clocks should be synchronised between Kafka, AAP, and z/OS for reliable event
+* System clocks should be synchronized between Kafka, AAP, and z/OS for reliable event
   sequencing within the correlation window.
 
 
@@ -353,14 +353,14 @@ Event correlation timeout
 * Increase the timeout value if the IFA780A message and C2P1607I alert are consistently
   arriving more than 90 seconds apart in your environment.
 * Review Kafka consumer lag to determine whether events are being delayed in the pipeline.
-* Verify that system clocks are synchronised between Kafka and AAP.
+* Verify that system clocks are synchronized between Kafka and AAP.
 
 Events not matching
 ~~~~~~~~~~~~~~~~~~~~
 
 * Enable verbose logging in the activation settings.
 * Verify whether the ``alert_code`` field in the C2P1607I event is exactly ``C2P1607I``
-  (case-sensitive).
+  and case-sensitive.
 * Verify whether the IFA780A message text matches the regex pattern
   ``IFA780A SMF RECORD FLOOD MSG FILTER FOR TYPE``.
 * Confirm that the filter plugin is correctly parsing and structuring the raw Kafka events.
