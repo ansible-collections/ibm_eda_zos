@@ -10,23 +10,20 @@
 Event filter
 ============
 
-Synopsis 
+Synopsis
 --------
 
-* The IBM Event-Driven Ansible collection provides a custom event filter, referred to as ``ibm.ibm_eda_zos.security_alerts`` to preprocess 
-  event data before it is evaluated by the rule engine.  
-  This ensures the data is in the ideal format by bringing valuable attributes like usernames, group names, data set names, and security 
-  metadata to the top level to easily use for your rule conditions.
+* The IBM Event-Driven Ansible collection provides a custom event filter, named ``ibm.ibm_eda_zos.security_alerts``, to preprocess event data before it is evaluated by the rule engine. This ensures that the data is in the ideal format for rule evaluation by exposing important attributes such as user names, group names, data set names, and security metadata at the top level.
 
-* The event filter currently supports zSecure pre-defined alerts.
+* The event filter currently supports predefined zSecure alerts.
 
 Parameters
 ----------
 
 **event_source**
-      Name of the event source. Currently, supporting "kafka", otherwise it defaults to None and return the event without any changes.
-   
-   :required: True 
+   Name of the event source. The filter currently supports ``kafka``. If the event source is not ``kafka``, the filter returns the event unchanged.
+
+   :required: True
    :type: str
    :default: None
 
@@ -54,7 +51,7 @@ Examples
 Attributes
 ----------
 
-The filter extracts and adds the following attributes to the event body:
+The filter extracts and adds the following attributes to the event body.
 
 Top-level attributes
 ~~~~~~~~~~~~~~~~~~~~
@@ -204,17 +201,16 @@ Input and output examples
 
 The event filter expects events following a similar structure below:
 
-* The message attribute contains the raw alert message with the actual alert text enclosed in double quotes. Once the raw alert message is extracted,
-  the filter gathers additional fields from the alert message.
-* The metadata attribute contains a comma-separated string with hostname as the first value.
-* The filter returns an event dictionary with additional extracted fields added to the original event or returns the original event unchanged if processing fails. 
-* If the attribute does not exist in the alert message, it returns with a null.
+* The ``message`` attribute contains the raw alert message with the actual alert text enclosed in double quotes. After the raw alert message is extracted, the filter gathers additional fields from it.
+* The ``metadata`` attribute is a comma-separated string with the host name as the first value.
+* The filter returns an event dictionary with additional extracted fields added to the original event. If processing fails, the original event is returned unchanged.
+* If an attribute does not exist in the alert message, the filter returns a null value.
 
-Example for alert code C2P1101I: 
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Example for alert code C2P1101I:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Before event filter: 
-~~~~~~~~~~~~~~~~~~~~~
+Before event filter:
+~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: json
 
@@ -267,10 +263,10 @@ After event filter:
      user_category: null
 
 Example for alert code C2P1105I:
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Before event filter: 
-~~~~~~~~~~~~~~~~~~~
+Before event filter:
+~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: json
   
@@ -379,12 +375,8 @@ After event filter:
 
 .. note::
 
-    Currently, only **kafka** is supported as the event source and events from other sources pass through as unchanged.
+   Currently, only **kafka** is supported as the event source. Events from other sources pass through unchanged.
 
 .. note::
 
-   The attributes listed above were chosen based on the zSecure pre-defined alerts.
-   The **Sample Alerts Supported** column identifies which alerts each attribute applies to. If the
-   event filter is applied to an unsupported alert, the event may pass through unchanged or the
-   extracted attributes may be inaccurate, as the message structure of those alerts is not guaranteed
-   to match the patterns the filter expects.
+   The attributes listed above were chosen based on predefined zSecure alerts. The **Sample Alerts Supported** column identifies which alerts each attribute applies to. If the event filter is applied to an unsupported alert, the event might pass through unchanged, or the extracted attributes might be inaccurate because those message structures are not guaranteed to match the patterns that the filter expects.
