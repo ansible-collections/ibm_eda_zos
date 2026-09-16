@@ -338,7 +338,7 @@ Troubleshooting
 Rulebook not triggering
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-* Verify whether both the IFA780A WTO message and the C2P1607I alert are being published to
+* Verify whether both the IFA780A WTO message and the C2P1607I alert are published to
   Kafka.
 * Verify whether the event format matches the expected structure for both events.
 * Verify whether the IFA780A message text contains the phrase
@@ -352,7 +352,7 @@ Event correlation timeout
 
 * Increase the timeout value if the IFA780A message and C2P1607I alert are consistently
   arriving more than 90 seconds apart in your environment.
-* Review Kafka consumer lag to determine whether events are being delayed in the pipeline.
+* Review Kafka consumer lag to determine whether events are delayed in the pipeline.
 * Verify that system clocks are synchronized between Kafka and AAP.
 
 Events not matching
@@ -369,5 +369,5 @@ Events not matching
 See also
 --------
 
-- Playbook suggestions, see :ref:`1607_diagnostic` and :ref:`send_alert_email_1607`.
+- Playbook suggestions, see :ref:`1607_diagnostic`, and :ref:`send_alert_email_1607`.
 - `Ansible Automation Platform - Getting started as an automation developer <https://docs.redhat.com/en/documentation/red_hat_ansible_automation_platform/2.6/get_started-assembly_gs_auto_dev>`_.

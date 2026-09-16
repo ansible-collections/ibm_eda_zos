@@ -4,7 +4,7 @@
 
 .. _1213_access_update_data_set:
 
-1213_access_update_data_set - Monitor zSecure alerts from Kafka for access >= UPDATE on a sensitive data set
+1213_access_update_data_set - Monitor zSecure alerts from Kafka for access >= UPDATE on a sensitive dataset
 ============================================================================================================
 
 .. contents::
@@ -15,7 +15,7 @@
 Synopsis
 --------
 
-This rulebook monitors RACF for UPDATE or greater access to a sensitive data set. The zSecure-generated event is a C2P1213I alert and is delivered through Kafka.
+This rulebook monitors RACF for UPDATE or greater access to a sensitive dataset. The zSecure-generated event is a C2P1213I alert and is delivered through Kafka.
 
 When the alert is received, the rulebook starts the configured AAP workflow template to perform the response workflow. Unlike rulebooks that use multi-event correlation, this rulebook uses a single-event condition. Each zSecure alert in this family is self-contained, so no corroborating event is required and no timeout is used.
 
@@ -114,7 +114,7 @@ Rules
 
 Alert codes monitored:
 
-* **C2P1213I**: zSecure alert indicating that a user has accessed a sensitive data set with an access level of UPDATE or higher.
+* **C2P1213I**: zSecure alert indicating that a user has accessed a sensitive dataset with an access level of UPDATE or higher.
 
 Condition
 ~~~~~~~~~
@@ -157,9 +157,9 @@ Event body fields
 -----------------
 
 * **alert_code**: The zSecure alert code (C2P1213I).
-* **alert_message**: Descriptive message about the sensitive data set access event.
+* **alert_message**: Descriptive message about the sensitive dataset access event.
 * **hostname**: The z/OS system where the event occurred.
-* **action_user**: The user ID that accessed the data set.
+* **action_user**: The user ID that accessed the dataset.
 * **timestamp**: The ISO 8601 timestamp of the alert.
 
 Variables

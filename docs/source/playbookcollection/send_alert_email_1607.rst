@@ -34,8 +34,8 @@ From the EDA event context
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 These variables are available automatically to all jobs in an EDA-launched workflow through
-``ansible_eda.events``. This playbook must run inside the **EDA - SMF 1607 Response Workflow**;
-the workflow must be triggered by the EDA rulebook for these references to be populated.
+``ansible_eda.events``. Ensure that this playbook runs inside the **EDA - SMF 1607 Response Workflow**;
+and the workflow is triggered by the EDA rulebook for these references to be populated.
 
 ansible_eda.events.c2p1607i.body.alert_code
   The zSecure alert code, always ``C2P1607I`` for this workflow.
@@ -43,7 +43,7 @@ ansible_eda.events.c2p1607i.body.alert_code
   | **type**: str
 
 ansible_eda.events.c2p1607i.body.alert_message
-  The descriptive message from zSecure describing the SMF record flood condition. Used as the
+  The descriptive message from zSecure that describes the SMF record flood condition. Used as the
   email subject line.
 
   | **type**: str
@@ -63,7 +63,7 @@ ansible_eda.events.ifa780a.body.alert_message
 From the AAP job template
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-These variables must be defined on the AAP job template that launches the playbook:
+Ensure that these variables are defined on the AAP job template that launches the playbook:
 
 security_alert_recipients
   One or more email addresses that receive the alert notification.
@@ -92,7 +92,7 @@ aap_controller_host
   | **type**: str
 
 target_hosts
-  The inventory host or group where the playbook executes. Defaults to ``localhost`` if not
+  The inventory host or group where the playbook runs. Defaults to ``localhost`` if not
   specified.
 
   | **type**: str
@@ -101,7 +101,7 @@ target_hosts
 From preceding playbooks (via set_stats)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-These variables are published by the :ref:`1607_diagnostic` playbook using ``set_stats`` and are
+These variables are published by the :ref:`1607_diagnostic` playbook by using ``set_stats`` and are
 available automatically to this playbook when both run in the same AAP workflow.
 
 smf_record_type

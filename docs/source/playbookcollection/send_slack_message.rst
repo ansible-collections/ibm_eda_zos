@@ -59,7 +59,7 @@ smf_record_type
 From the AAP job template / Controller environment
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-These variables must be defined on the AAP job template that launches the playbook:
+Ensure that these variables are defined on the AAP job template that launches the playbook:
 
 slack_webhook
   The Slack incoming webhook URL (or token) used to authenticate and post messages to the designated Slack channel.

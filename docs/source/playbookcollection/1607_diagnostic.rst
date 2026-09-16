@@ -54,7 +54,7 @@ ansible_eda.events.ifa780a.body.alert_message
 From the AAP job template
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-These variables must be defined on the AAP job template that launches the playbook:
+Ensure that these variables are defined on the AAP job template that launches the playbook:
 
 target_hosts
   The inventory host or group where the ``D SMF`` operator command is issued. Defaults to
@@ -143,8 +143,8 @@ Prerequisites
 * The AAP job template must include a Machine credential for z/OS SSH access.
 * The z/OS user running the playbook must be authorized to issue the ``D SMF`` operator command.
 * The ``ibm.ibm_zos_core`` collection must be installed in the execution environment.
-* This playbook must be run as a job inside the **EDA - SMF 1607 Response Workflow**, as it
-  depends on ``ansible_eda.events`` being populated by the EDA rulebook.
+* Ensure that this playbook runs as a job inside the **EDA - SMF 1607 Response Workflow**, as it
+  depends on ``ansible_eda.events`` that is populated by the EDA rulebook.
 
 
 Notes
