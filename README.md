@@ -6,7 +6,7 @@ The **IBM EDA z/OS** collection provides rulebooks and playbooks for automating 
 
 The **IBM EDA z/OS** collection is part of the **Red Hat Ansible Validated Content for IBM Z®** offering that brings Event-Driven Ansible automation to IBM Z. This collection provides rulebooks and playbooks that users can customize for automating various IBM Z operational scenarios through event-driven workflows. The collection also includes a custom event filter that extracts key attributes from z/OS events (such as user IDs, alert codes, alert messages, and job names), eliminating the need for repetitive filtering in rulebooks and playbooks.
 
-**The first release focuses on IBM Z Security**, enabling real-time monitoring of security events from zSecure and automating incident response workflows through rulebooks and response playbooks. The collection can be used to monitor RACF security alerts including group authority changes, password threshold breaches, unauthorized access attempts, and superuser logons.
+**The release focuses on IBM Z Security**, enabling real-time monitoring of security events from zSecure and automating incident response workflows through rulebooks and response playbooks. The collection can be used to monitor RACF security alerts including group authority changes, password threshold breaches, unauthorized access attempts, and superuser logons.
 
 Security teams can implement continuous compliance monitoring and automated response workflows, while system administrators can reduce mean time to response (MTTR) for security incidents. The collection integrates seamlessly with Kafka event streams, IBM z/OS systems, and email notification systems to provide end-to-end security automation.
 
@@ -86,6 +86,9 @@ The collection includes rulebooks for monitoring IBM Z security events:
 - **`1103_superuser_logon.yml`** - Detects superuser logon events (C2P1103I).
 - **`1107_1108_group_auth_status.yml`** - Monitors RACF group authority changes (C2P1107I, C2P1108I).
 - **`1111_invalid_password_limit_exceeded.yml`** - Detects password threshold breaches with event correlation (C2P1111I, ICH408I).
+- **`1212_access_read_data_set.yml`** - Monitor zSecure alerts from Kafka for access >= READ on a sensitive dataset.
+- **`1213_access_update_data_set.yml`** - Monitor zSecure alerts from Kafka for access >= UPDATE on a sensitive dataset.
+- **`1607_SMF_Flood_alert`** - Monitor zSecure alerts from Kafka for SMF Record Flood alert.
 
 ### Response Playbooks
 
@@ -98,6 +101,9 @@ Response playbooks that can be triggered by rulebooks:
 - **`send_alert_email.yml`** - Send HTML email notification for security administrators.
 - **`setr_jes_batchallracf.yml`** - Enable RACF authentication for all batch jobs.
 - **`unquarantine_user.yml`** - Remove CONTAIN attribute and resume user access.
+- **`1607_diagnostic.yml`** - Capture SMF flood diagnostics for zSecure alert C2P1607I.
+- **`send_alert_email_1607.yml`** - Send HTML email notification for SMF Record Flood alert.
+- **`send_slack_message.yml`** - Send Slack notification to security administrators.
 
 ### Email Templates
 
@@ -154,7 +160,7 @@ As **Ansible Validated Content**, this collection is supported by the community 
 
 ## Release Notes and Roadmap
 
-The collection's cumulative release notes can be found in the [CHANGELOG.rst](CHANGELOG.rst) file.
+The collection's cumulative release notes can be found in the [CHANGELOG.rst](https://github.com/ansible-collections/ibm_eda_zos/blob/staging-v1.1/CHANGELOG.rst) file.
 
 <br/>**Current Release:** Version 1.0.0
 
@@ -171,7 +177,7 @@ The collection provides core security monitoring capabilities for IBM Z systems 
 
 ### Additional Resources
 - [Getting Started with Ansible for IBM Z](https://ibm.github.io/z_ansible_collections_doc/reference/helpful_links.html) - Helpful links and resources
-- [IBM zSecure Documentation](https://www.ibm.com/docs/en/zsecure) - zSecure product documentation
+- [IBM zSecure Documentation](https://www.ibm.com/docs/szs/3.2.1) - zSecure product documentation
 - [RACF Documentation](https://www.ibm.com/docs/en/zos) - z/OS RACF security documentation
 
 ## License Information
