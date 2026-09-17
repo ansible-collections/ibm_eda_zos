@@ -68,7 +68,7 @@ system_environment:
 
 ### Custom Event Filter
 
-The collection includes a **security event filter** designed for Kafka event streams that automatically extracts valuable attributes from z/OS user related security events. This eliminates the need for custom regex filtering in every rulebook and playbook, significantly simplifying automation development and making event data readily accessible for conditions and variables.
+The collection includes a **security event filter** for Kafka event streams that automatically extracts key attributes from z/OS user-related security events including datsets, and SMF alerts. This eliminates the need for custom regex filtering in every rulebook and playbook, significantly simplifying automation development and making event data readily accessible for conditions and variables.
 
 This filter parses complex event messages and makes key information immediately available at the top level, including:
 
@@ -86,9 +86,9 @@ The collection includes rulebooks for monitoring IBM Z security events:
 - **`1103_superuser_logon.yml`** - Detects superuser logon events (C2P1103I).
 - **`1107_1108_group_auth_status.yml`** - Monitors RACF group authority changes (C2P1107I, C2P1108I).
 - **`1111_invalid_password_limit_exceeded.yml`** - Detects password threshold breaches with event correlation (C2P1111I, ICH408I).
-- **`1212_access_read_data_set.yml`** - Monitor zSecure alerts from Kafka for access >= READ on a sensitive dataset.
-- **`1213_access_update_data_set.yml`** - Monitor zSecure alerts from Kafka for access >= UPDATE on a sensitive dataset.
-- **`1607_SMF_Flood_alert`** - Monitor zSecure alerts from Kafka for SMF Record Flood alert.
+- **`1212_access_read_data_set.yml`** - Monitors zSecure alerts from Kafka for access >= READ on a sensitive dataset.
+- **`1213_access_update_data_set.yml`** - Monitors zSecure alerts from Kafka for access >= UPDATE on a sensitive dataset.
+- **`1607_SMF_Flood_alert`** - Monitors zSecure alerts from Kafka for SMF Record Flood alert.
 
 ### Response Playbooks
 
@@ -116,6 +116,8 @@ HTML email templates for security notifications:
 - **`racf_alert_base.html.j2`** - Base HTML structure with CSS styling.
 - **`racf_email_alert.html.j2`** - Email alert template.
 - **`racf_listuser_section.html.j2`** - Reusable RACF LISTUSER output display.
+- **`smf_1607_alert_email.html.j2`** - SMF Record Flood Detected.
+
 
 ## Testing
 
