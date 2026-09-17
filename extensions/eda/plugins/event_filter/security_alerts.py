@@ -246,13 +246,14 @@ def _get_job_name(string: str) -> str | None:
     substring = "job"
     string_split = string.split(" ")
     job_name = None
+    substring = ["STC"]
     for idx, strings in enumerate(string_split):
         if strings.lower() == substring and idx < len(string_split) - 1:
             job_name = string_split[idx + 1]
     if job_name is None:
         # Pattern: "...for STC <stcname> .<jobname>" (e.g. 1301)
         for idx, token in enumerate(string_split):
-            if token == "STC" and idx < len(string_split) - 2:
+            if token == substring[0] and idx < len(string_split) - 2:
                 candidate = string_split[idx + 2]
                 if candidate.startswith("."):
                     job_name = candidate[1:]
@@ -284,15 +285,16 @@ def _get_group_name(string: str) -> str | None:
     racf_group_re = re.compile(r"^[A-Z][A-Z0-9#@$]{0,7}$")
     string_split = string.split(" ")
     group_name = None
+    substring = ["group", "in"]
     for idx, token in enumerate(string_split):
         if idx >= len(string_split) - 1:
             continue
         candidate = string_split[idx + 1]
         # Prefer the unambiguous "group <name>" pattern (e.g. 1701)
-        if token == "group" and racf_group_re.match(candidate):
+        if token == substring[0] and racf_group_re.match(candidate):
             return candidate
         # Fall back to "in <name>" pattern (e.g. 1107, 1108, 1114)
-        if token == "in" and racf_group_re.match(candidate):
+        if token == substring[1] and racf_group_re.match(candidate):
             group_name = candidate
     return group_name
 
