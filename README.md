@@ -153,11 +153,8 @@ As **Ansible Validated Content**, this collection is supported by the community 
 - [ansible-core](https://github.com/ansible/ansible)
 
 <br/>For issues with the collection:
-1. Check existing [GitHub issues](https://github.com/ansible-collections/ibm_eda_zos/issues).
 
-2. Open a new issue with detailed information about your environment and the problem.
-
-<br/>For issues with dependencies (ZOAU, Python SDK, z/OS), contact IBM support directly.
+Red Hat customers can open support cases by using the Create issue button in Automation Hub.
 
 
 ## Release Notes and Roadmap
