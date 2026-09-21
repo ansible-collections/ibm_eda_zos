@@ -33,7 +33,6 @@ Rulebook
 
 .. code-block:: yaml
 
-   ---
    - name: Rule to handle alert 1607 - SMF Record Flood
      hosts: all
 
