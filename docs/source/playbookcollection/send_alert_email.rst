@@ -171,7 +171,7 @@ Notes
   a single email to report both the alert and the remediation outcome.
 * All output is written to the AAP job log. Restrict access to job logs if your security policy 
   requires it.
-* This playbook is typically the final step in a security workflow, that run after remediation 
+* This playbook is typically the final step in a security workflow, that runs after remediation 
   playbooks like :ref:`quarantine_user`, or :ref:`remove_uid_access`.
 
 
