@@ -72,10 +72,6 @@ Reference
 
 * Supported by IBM Ansible Content for IBM Z.
 
-Known Issues
-~~~~~~~~~~~~~
-
-No known issues identified in this release.
 
 Version 1.0.0
 --------------
