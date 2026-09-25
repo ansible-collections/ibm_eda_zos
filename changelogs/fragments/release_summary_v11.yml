@@ -1,0 +1,9 @@
+release_summary: |
+  Release Date: '2026-09-16'
+
+  Release 1.1.0 of the ibm.ibm_eda_zos collection adds new rulebooks for
+  detecting READ/UPDATE access to sensitive data sets (alerts 1212, 1213) and
+  SMF record flood events (alert 1607). The ``security_alerts`` event filter
+  is extended with ``dataset``, ``resource``, ``smf``, and UNIX authority
+  fields for richer event data extraction. Includes a Slack integration via the
+  *send_slack_message* playbook for real-time security alert notifications.
