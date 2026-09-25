@@ -5,7 +5,7 @@ namespace: "ibm"
 name: "ibm_eda_zos"
 
 # The collection version
-version: 1.0.0
+version: 1.1.0
 
 # Collection README file
 readme: README.md
@@ -21,7 +21,8 @@ authors:
 description: Ansible Collection containing Event Driven Ansible solutions for IBM Z products.
 
 # License:
-license_file: LICENSE
+license:
+  - Apache-2.0
 
 # Tags
 tags: [ibm, z, zos, z_os, ibm_eda_zos, racf, security, eda, infrastructure]
@@ -46,20 +47,27 @@ issues: https://github.com/ansible-collections/ibm_eda_zos/issues
 
 # Ignore files and directories matching the following patterns
 build_ignore:
-  - .gitignore
-  - .git
-  - changelogs/.plugin-cache.yaml
   - .ansible
-  - .github
-  - .vscode
+  - .ansible-lint
+  - .cache
   - .DS_Store
+  - .git
+  - .github
+  - .gitignore
+  - .pytest_cache
+  - .python-version
+  - .ruff_cache
+  - .vscode
+  - __pycache__
+  - ansible.cfg
+  - ansible_collections
+  - branch_protection_rules.json
   - changelogs
   - collections
-  - docs
-  - tests
-  - venv
-  - .ansible-lint
-  - ansible.cfg
-  - branch_protection_rules.json
   - devfile.yaml
+  - docs
+  - scripts
+  - tests
+  - '*.log'
   - '*.tar.gz'
+  - 'venv*'
