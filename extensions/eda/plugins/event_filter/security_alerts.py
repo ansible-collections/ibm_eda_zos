@@ -246,14 +246,14 @@ def _get_job_name(string: str) -> str | None:
     substring = "job"
     string_split = string.split(" ")
     job_name = None
-    substring = ["STC"]
+    list_substring = ["STC"]
     for idx, strings in enumerate(string_split):
         if strings.lower() == substring and idx < len(string_split) - 1:
             job_name = string_split[idx + 1]
     if job_name is None:
         # Pattern: "...for STC <stcname> .<jobname>" (e.g. 1301)
         for idx, token in enumerate(string_split):
-            if token == substring[0] and idx < len(string_split) - 2:
+            if token == list_substring[0] and idx < len(string_split) - 2:
                 candidate = string_split[idx + 2]
                 if candidate.startswith("."):
                     job_name = candidate[1:]
