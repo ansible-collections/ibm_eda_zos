@@ -211,8 +211,14 @@ Community support does **not** include:
 
 For issues with the collection:
 
-Red Hat customers can open support cases by using the **Create issue** button in
-Automation Hub.
+  1. Check existing (GitHub issues)[https://github.com/ansible-collections/ibm_eda_zos/issues].
+
+  2. Open a new issue with detailed information about your environment and the problem.
+
+For issues with dependencies (ZOAU, Python SDK, z/OS), contact IBM support directly.
+
+Red Hat customers are entitled to open support cases by using the **Create issue** button in
+Automation Hub, however this collection is only supported through the community.
 
 ## Release Notes and Roadmap
 
