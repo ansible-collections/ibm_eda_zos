@@ -1,6 +1,5 @@
-##############################################################################
 # Copyright (c) IBM Corporation 2026
-
+##############################################################################
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -11,7 +10,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 ##############################################################################
-
 
 """Event filter plugin for processing zSecure user related security alerts.
 
@@ -142,7 +140,7 @@ def _get_full_alert_message_kafka(string: str) -> str | None:
     alert_message = None
     if pattern_search is not None:
         alert_message = re.sub(
-            r"\s*\n\s*", " ", pattern_search.group(1).strip()
+            r"\s*\n\s*", " ", pattern_search.group(1).strip(),
         )
     return alert_message
 
@@ -280,7 +278,7 @@ def _get_group_name(string: str) -> str | None:
         is found.
 
     """
-    # RACF group name: 1–8 uppercase alphanumeric or national (#, @, $)
+    # RACF group name: 1-8 uppercase alphanumeric or national (#, @, $)
     # characters, must start with a letter.
     racf_group_re = re.compile(r"^[A-Z][A-Z0-9#@$]{0,7}$")
     string_split = string.split(" ")
@@ -299,6 +297,23 @@ def _get_group_name(string: str) -> str | None:
     return group_name
 
 
+def _is_valid_candidate(token: str) -> bool:
+    """Return True if *token* passes all guards for a target user ID.
+
+    Rejects tokens that contain lowercase letters, are in the
+    non-userid blocklist, or fail the RACF userid validator.
+    """
+    # Tokens that pass _is_valid_userid but are never a user ID in context.
+    _non_userid_tokens = frozenset({
+        "APF", "UPDATE", "ALTER", "READ", "NONE", "CREATE", "STC",
+    })
+    return (
+        not any(c.islower() for c in token)
+        and token not in _non_userid_tokens
+        and _is_valid_userid(token)
+    )
+
+
 def _get_target_user_name(string: str) -> str | None:
     """Extract target user name from an alert message.
 
@@ -309,11 +324,6 @@ def _get_target_user_name(string: str) -> str | None:
 
     Special handling for 'User' keyword: looks for target user after
     subsequent 'from' or 'for' keywords.
-
-    RACF user IDs are always uppercase, so any lowercase token is
-    rejected before the userid validator runs. A small blocklist of
-    well-known non-userid tokens that share the same uppercase character
-    set (e.g. access levels, structural keywords) is also applied.
 
     Parameters
     ----------
@@ -327,16 +337,9 @@ def _get_target_user_name(string: str) -> str | None:
         None if no valid user ID is found
 
     """
-    # Tokens that pass _is_valid_userid but are never a user ID in this
-    # context.
-    non_userid_tokens = frozenset({
-        "APF", "UPDATE", "ALTER", "READ", "NONE", "CREATE", "STC",
-    })
-
     substrings = ["from", "user", "User", "superuser", "Superuser",
                   "to", "for"]
     string_split = string.split(" ")
-    target_user_name = None
     for idx, strings in enumerate(string_split):
         if strings not in substrings:
             continue
@@ -345,33 +348,26 @@ def _get_target_user_name(string: str) -> str | None:
             # Look for target user after "from" or "for" — apply the same
             # guards (no lowercase, not in blocklist) as the main branch.
             for j in range(idx + 2, len(string_split) - 1):
-                if string_split[j] in ["from", "for"]:
-                    cand = string_split[j + 1]
-                    if (not any(c.islower() for c in cand) and
-                            cand not in non_userid_tokens and
-                            _is_valid_userid(cand)):
-                        return cand
+                if (string_split[j] in ("from", "for")
+                        and _is_valid_candidate(string_split[j + 1])):
+                    return string_split[j + 1]
             continue
 
         # 'by user <ID>' belongs to action_user, not target_user —
         # except in C2P1407 ('obtained by user X').
-        if (strings == "user" and idx > 0 and
-                string_split[idx - 1] == "by" and
-                "C2P1407" not in string):
+        if (strings == "user" and idx > 0
+                and string_split[idx - 1] == "by"
+                and "C2P1407" not in string):
             continue
 
         if idx >= len(string_split) - 1:
             continue
         candidate = string_split[idx + 1]
-        if any(c.islower() for c in candidate):
-            continue
-        if candidate in non_userid_tokens:
-            continue
         if candidate.endswith(":"):
             continue
-        if (_is_valid_userid(candidate) and candidate != "user"):
+        if _is_valid_candidate(candidate) and candidate != "user":
             return candidate
-    return target_user_name
+    return None
 
 
 def _get_dataset_name(string: str) -> str | None:
@@ -379,7 +375,7 @@ def _get_dataset_name(string: str) -> str | None:
 
     Handles four distinct patterns found in zSecure alert messages:
 
-    - ``data set <name>`` — most data alerts (1201, 1204, 1209–1214) and
+    - ``data set <name>`` — most data alerts (1201, 1204, 1209-1214) and
       general_resource alert 1302
     - ``<name> on volume``— APF WTO-based alerts (1205, 1206, 1217, 1218)
       where the dataset name precedes ``on volume`` with no ``data set``
@@ -421,7 +417,7 @@ def _get_pds_member(string: str) -> str | None:
     """Extract PDS member name from an alert message.
 
     Searches for the keyword ``member`` and extracts the following token
-    if it matches the MVS member name character set: 1–8 uppercase
+    if it matches the MVS member name character set: 1-8 uppercase
     alphanumeric or national characters (``#``, ``@``, ``$``), with no
     dots.
 
@@ -447,7 +443,7 @@ def _get_volume_serial(string: str) -> str | None:
     Searches for the phrase ``on volume`` and extracts the token that
     follows. Two formats are handled:
 
-    - A real VOLSER: 1–6 uppercase alphanumeric characters (e.g. ``USER01``)
+    - A real VOLSER: 1-6 uppercase alphanumeric characters (e.g. ``USER01``)
     - An SMS-managed indicator: angle-bracket phrase (e.g. ``<SMS MANAGED>``)
 
     Parameters
@@ -579,7 +575,7 @@ def _get_smf_records_lost(string: str) -> str | None:
 
 
 def _get_wto_msgid(string: str) -> str | None:
-    """Extract the WTO message ID from an alert message.
+    r"""Extract the WTO message ID from an alert message.
 
     Uses ``WTO msgid:\\s*(\\S+)`` to handle inconsistent spacing after the
     ``WTO msgid:`` keyword
@@ -660,7 +656,7 @@ def _get_access_level(string: str) -> str | None:
 
     - ``WARNING mode <LEVEL> by``           — alerts 1201, 1303: level follows
       ``WARNING mode`` and precedes ``by``
-    - ``<LEVEL> access by``                 — alerts 1209–1213: level is the
+    - ``<LEVEL> access by``                 — alerts 1209-1213: level is the
       token immediately before ``access``
     - ``UACC/access set to <LEVEL>``        — alert 1304 (``UACC``) and alerts
       1202, 1203 (``access``)
@@ -701,7 +697,7 @@ def _get_unix_path(string: str) -> str | None:
 
     Handles three structural patterns found in UNIX alert messages:
 
-    - ``on <path>``          — alerts 1401–1403: path contains a slash
+    - ``on <path>``          — alerts 1401-1403: path contains a slash
     - ``directory <name>``   — alert 1404: bare name after ``directory``
     - ``for <name>``         — alert 1409 only: bare name after ``for``;
 
@@ -737,7 +733,7 @@ def _get_resource_name(string: str) -> str | None:
 
     - ``Resource <name>``              — user_events (1110): explicit
       ``Resource`` label precedes the resource name token
-    - ``on <known-class> <name>`` /    — general_resource (1303–1307):
+    - ``on <known-class> <name>`` /    — general_resource (1303-1307):
       resource name is the token immediately after the class name
     - ``permit on <name>``             — unix_event (1411): resource name
       follows ``permit on`` directly with no class keyword present
@@ -804,9 +800,20 @@ def _get_resource_class(string: str) -> str | None:
     return next(g for g in pattern.groups() if g is not None)
 
 
+def _get_action_user_fallback(string: str) -> str | None:
+    """Extract action user from alerts codes without keyword 'by'.
+
+    Edge case for alerts C2P1410 and C2P1701.
+    """
+    if "C2P1410" in string or "C2P1701" in string:
+        m = re.search(r"\bC2P\w+I\s+(\S+)", string)
+        if m and _is_valid_userid(m.group(1)):
+            return m.group(1)
+    return None
+
+
 def _get_action_user_name(string: str) -> str | None:
-    """Extract the action user (the user who performed the action)
-    from an alert message.
+    """Extract the action user from an alert message.
 
     Three extraction strategies are tried in order:
 
@@ -815,8 +822,6 @@ def _get_action_user_name(string: str) -> str | None:
     2. **``by <ID>``** — user ID following the keyword ``by``.  The literal
        token ``user`` is treated as an English keyword and skipped so that
        ``by user C##ASCH`` correctly yields ``C##ASCH``.
-    3. **Alert-code fallback** — for alerts that carry no ``by`` keyword
-       (C2P1410, C2P1701), the first token after the alert code is used.
 
     Parameters
     ----------
@@ -858,14 +863,11 @@ def _get_action_user_name(string: str) -> str | None:
                 if any(c.islower() for c in candidate):
                     continue
                 action_user_name = candidate.rstrip(":")
-    # C2P1410/C2P1701 lead with '<USER> assigned …' / '<USER> issued connect …'
-    # — no 'by' keyword, so grab the first token after the alert code.
-    if action_user_name is None and (
-            "C2P1410" in string or "C2P1701" in string):
-        m = re.search(r"\bC2P\w+I\s+(\S+)", string)
-        if m and _is_valid_userid(m.group(1)):
-            action_user_name = m.group(1)
-    return action_user_name
+
+    if action_user_name is not None:
+        return action_user_name
+
+    return _get_action_user_fallback(string)
 
 
 def main(event: dict[str, Any], event_source: str | None = None) -> (
