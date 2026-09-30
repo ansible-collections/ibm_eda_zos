@@ -211,7 +211,7 @@ Community support does **not** include:
 
 For issues with the collection:
 
-  1. Check existing (GitHub issues)[https://github.com/ansible-collections/ibm_eda_zos/issues].
+  1. Check existing [GitHub issues](https://github.com/ansible-collections/ibm_eda_zos/issues).
 
   2. Open a new issue with detailed information about your environment and the problem.
 
