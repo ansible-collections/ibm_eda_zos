@@ -1,0 +1,46 @@
+###############################################################################
+# Copyright (c) IBM Corporation 2026
+###############################################################################
+
+###############################################################################
+# This rulebook monitors security events delivered through Kafka for alert
+# C2P1212I, which indicates that access of READ or greater was granted to a
+# sensitive data set.
+#
+# When this alert is received, the rulebook matches the event and launches the
+# configured Ansible Automation Platform workflow template
+# `EDA - Alert 1212 Response Workflow` in the `Default` organization.
+#
+# Required configuration:
+# - Kafka connectivity values must be provided for `kafka_topic`,
+#   `kafka_host`, `kafka_port`, `security_protocol`, and `cafile`.
+# - The Kafka source must receive zSecure alert events in the expected format.
+# - The `ibm.ibm_eda_zos.security_alerts` event filter plugin must be available.
+# - The workflow template `EDA - Alert 1212 Response Workflow` must exist and be
+#   accessible to the rulebook.
+###############################################################################
+
+---
+- name: Rule to handle alert 1212 - Access >= READ on sensitive data set
+  hosts: all
+  sources:
+    - name: kafka
+      ansible.eda.kafka:
+        topic: "{{ kafka_topic }}"
+        host: "{{ kafka_host }}"
+        port: "{{ kafka_port }}"
+        security_protocol: "{{ security_protocol }}"
+        ssl_cafile: "{{ cafile }}"
+        check_hostname: true
+
+      filters:
+        - ibm.ibm_eda_zos.security_alerts:
+            event_source: "kafka"
+
+  rules:
+    - name: "Handle alert 1212 - Access >= READ on sensitive data set"
+      condition: event.body.alert_code == "C2P1212I"
+      action:
+        run_workflow_template:
+          name: "EDA - Alert 1212 Response Workflow"
+          organization: "Default"

@@ -3,26 +3,30 @@
 ################################################################################
 # For additonal doc, see https://ansible.readthedocs.io/projects/lint/configuring/
 exclude_paths:
-  - .tar.gz
-  - __pycache__/
+  - .ansible/
   - .ansible-lint
   - .cache/
   - .DS_Store
   - .git/
   - .github/
   - .gitignore
-  - .python-version
   - .pytest_cache/
+  - .python-version
   - .vscode/
+  - __pycache__/
   - ansible.cfg
+  - ansible_collections/
+  - branch_protection_rules.json
   - changelogs/
   - collections/
+  - devfile.yaml
   - docs/
+  - playbooks/security/
   - scripts/
-  - playbooks/security
-  - venv*
-  - ansible_collections/
-  - ./*.log
+  - tests/
+  - "*.log"
+  - "*.tar.gz"
+  - "venv*"
 quiet: false
 use_default_rules: true
 verbosity: 1
