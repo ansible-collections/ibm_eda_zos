@@ -1,0 +1,59 @@
+###############################################################################
+# Copyright (c) IBM Corporation 2026
+###############################################################################
+#
+# This rulebook monitors zSecure Alert 1109 (C2P1109I) events delivered
+# through Kafka. Alert 1109 fires when a user exercises SPECIAL authority
+# that is no longer present in their RACF profile — a privilege escalation
+# gap that can only be detected by comparing the ACEE (session badge) against
+# the live profile.
+#
+# When a C2P1109I event is detected, the rulebook launches the AAP workflow
+# template "EDA - Alert 1109 Response Workflow" in the Default organization.
+# That workflow:
+#   Job 1 — Investigate: runs LISTUSER on z/OS, reads the user's recent
+#            UAUDIT command history from ZLDA (Kafka), and posts a Slack
+#            notification to the admin channel with a link to the workflow.
+#   Approval node — Admin reviews the findings and clicks Approve or Deny.
+#   Approve — End Session (C U=userid), then Revoke Access (ALTUSER REVOKE),
+#             then Notify and Email.
+#   Deny    — Notify and Email only (security team investigates further).
+#             No action is taken against the user.
+#
+# Required configuration:
+# - Kafka connectivity values must be provided for kafka_topic, kafka_host,
+#   kafka_port, security_protocol, and cafile.
+# - The ibm.ibm_eda_zos.security_alerts filter plugin must be available.
+# - The workflow template "EDA - Alert 1109 Response Workflow" must exist
+#   and be accessible to the rulebook in the Default organization.
+###############################################################################
+
+---
+- name: Rule to handle alert 1109 - SPECIAL Authority Used by Non-SPECIAL User
+  hosts: all
+
+  sources:
+    - name: kafka
+      ansible.eda.kafka:
+        topic: "{{ kafka_topic }}"
+        host: "{{ kafka_host }}"
+        port: "{{ kafka_port }}"
+        security_protocol: "{{ security_protocol }}"
+        ssl_cafile: "{{ cafile }}"
+        check_hostname: true
+
+      filters:
+        - ibm.ibm_eda_zos.security_alerts:
+            event_source: "kafka"
+
+  rules:
+    - name: Handle SPECIAL Authority Used by Non-SPECIAL User - C2P1109I
+
+      condition:
+        all:
+          - events.c2p1109i << event.body.alert_code == "C2P1109I"
+
+      action:
+        run_workflow_template:
+          name: "EDA - Alert 1109 Response Workflow"
+          organization: "Default"

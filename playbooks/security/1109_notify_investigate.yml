@@ -1,0 +1,238 @@
+################################################################################
+# Copyright (c) IBM Corporation 2026
+################################################################################
+
+################################################################################
+# Notify and email - zSecure Alert 1109 (used by BOTH workflow paths)
+#
+# Workflow position: final node
+#   "EDA - Alert 1109 Response Workflow"
+#
+#  1109 Investigate -> Approval --Approve--> End Session -> Revoke Access --+
+#                               |                                           |
+#                               +--Deny-------------------------------------+
+#                                                                           v
+#                                                  1109 Notify and Email (this)
+#
+# One playbook, one email template (templates/racf_1109_alert.html.j2) and one
+# Slack message (full step list when approved, one line when denied):
+#   Approved : reports what was done (end session, REVOKE) and, if
+#              anything failed, the exact manual commands to run.
+#   Denied   : requests manual investigation; no action was taken.
+#
+# Which path ran is taken from `admin_decision` ("approved" or "denied"). The
+# End Session and Revoke Access jobs publish admin_decision=approved as their
+# very first step, so it is known even if those jobs fail later. If it is not
+# set at all (deny path) the decision is inferred: a published end-session or
+# revoke status means "approved", otherwise "denied".
+#
+# Error handling:
+#   - Runs on localhost, so it still works when the z/OS host is unreachable.
+#   - Link into this node with "Run always" from the revoke node so the report
+#     is sent even if an earlier job crashed. Missing results show "Not run".
+#   - Overall status: SUCCESS | PARTIAL | FAILED (approved) or DENIED.
+#   - Email problems never stop the Slack post: missing recipients are
+#     reported as "Skipped", SMTP or template errors as "Failed" (a minimal
+#     fallback body is used if the template cannot be rendered).
+#   - After notifying, the job FAILS when the overall status is PARTIAL or
+#     FAILED, or when the email failed, so the workflow run shows red and
+#     someone looks at it. It is the last node, so nothing downstream is
+#     blocked.
+#
+# Required configuration:
+# - `security_alert_recipients`, `security_alert_sender`, `smtp_server`,
+#   `smtp_server_port` for the email (recipients empty = email skipped).
+# - `slack_webhook` and `aap_controller_host` for Slack / workflow link.
+# - Optional `slack_notify_on_deny` (default true): set to false to skip the
+#   Slack message on the deny path (the email is still sent).
+# - Artifacts from earlier nodes (target_user, hostname, alert_command,
+#   lu_*, zlda_summary, tso_cancel_*, racf_*).
+################################################################################
+
+---
+- name: Notify and email - zSecure Alert 1109
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    ok_tso_states: ["Success", "No active session"]
+    icon_by_status:
+      Success: ":white_check_mark:"
+      No active session: ":white_check_mark:"
+      Not run: ":grey_question:"
+
+    email_recipients: "{{ security_alert_recipients | default([], true) }}"
+    email_from: "{{ security_alert_sender | default('aap-security@example.com', true) }}"
+    smtp_host: "{{ smtp_server | default('localhost', true) }}"
+    smtp_port: "{{ smtp_server_port | default(25, true) }}"
+    slack_token: "{{ slack_webhook | default(slack_webhook_token | default('', true), true) }}"
+
+    workflow_url: >-
+      {{ 'https://' ~ (aap_controller_host | default('')) ~ '/execution/jobs/workflow/' ~ awx_workflow_job_id
+         if (aap_controller_host | default('', true) != ''
+             and awx_workflow_job_id | default('', true) not in ('', None, 'None'))
+         else 'N/A' }}
+
+  tasks:
+
+    ###########################################################################
+    # Normalise inputs and compute the overall outcome
+    ###########################################################################
+
+    - name: Normalise alert context
+      ansible.builtin.set_fact:
+        target_user: "{{ target_user | default('UNKNOWN') }}"
+        hostname: "{{ hostname | default('UNKNOWN') }}"
+        alert_code: "{{ alert_code | default('C2P1109I') }}"
+        alert_command: "{{ alert_command | default('N/A', true) }}"
+        lu_user_id: "{{ lu_user_id | default(target_user | default('UNKNOWN'), true) }}"
+        lu_owner: "{{ lu_owner | default('UNKNOWN', true) }}"
+        lu_default_group: "{{ lu_default_group | default('UNKNOWN', true) }}"
+        lu_attributes: "{{ lu_attributes | default('UNKNOWN', true) }}"
+        lu_joined: "{{ lu_joined | default('LISTUSER command failed or user not found', true) }}"
+        decision: >-
+          {{ admin_decision | default(
+               'approved' if (racf_revoke_status is defined or tso_cancel_status is defined) else 'denied', true) | lower }}
+
+    - name: Normalise step results
+      ansible.builtin.set_fact:
+        s_tso: "{{ tso_cancel_status | default('Not run') }}"
+        s_revoke: "{{ racf_revoke_status | default('Not run') }}"
+        s_verify: "{{ racf_verify_status | default('Unavailable') }}"
+
+    - name: Compute overall status
+      ansible.builtin.set_fact:
+        overall_status: >-
+          {% if decision != 'approved' %}DENIED
+          {%- elif s_tso in ok_tso_states and s_revoke == 'Success' %}SUCCESS
+          {%- elif s_tso not in ok_tso_states and s_revoke != 'Success' %}FAILED
+          {%- else %}PARTIAL{% endif %}
+
+    - name: Show outcome
+      ansible.builtin.debug:
+        msg:
+          - "Decision : {{ decision }}"
+          - "Overall  : {{ overall_status }}"
+          - "End session : {{ s_tso }}"
+          - "REVOKE      : {{ s_revoke }}"
+
+    ###########################################################################
+    # Email (same template for approved and denied)
+    ###########################################################################
+
+    - name: Build HTML email body
+      ansible.builtin.set_fact:
+        notification_body_html: "{{ lookup('template', 'templates/racf_1109_alert.html.j2') }}"
+      register: body_result
+      ignore_errors: true
+
+    - name: Use fallback body if the template could not be rendered
+      ansible.builtin.set_fact:
+        notification_body_html: >-
+          <html><body><h3>zSecure Alert 1109 - {{ overall_status }}</h3>
+          <p>User {{ target_user }} on {{ hostname }}. Decision: {{ decision }}.
+          End session: {{ s_tso }}; REVOKE: {{ s_revoke }}.</p>
+          <p>The full report could not be rendered; see the AAP workflow run: {{ workflow_url }}</p></body></html>
+      when: body_result is failed
+
+    - name: Build email subject
+      ansible.builtin.set_fact:
+        email_subject: >-
+          {% if overall_status == 'DENIED' -%}
+          [NOTIFICATION] zSecure Alert {{ alert_code }} - quarantine denied for {{ target_user }} on {{ hostname }}
+          {%- elif overall_status == 'SUCCESS' -%}
+          [INFO] zSecure Alert {{ alert_code }} - {{ target_user }} contained on {{ hostname }}
+          {%- else -%}
+          [ACTION REQUIRED] zSecure Alert {{ alert_code }} - remediation {{ overall_status }} for {{ target_user }} on {{ hostname }}
+          {%- endif %}
+
+    - name: Send email to security team
+      community.general.mail:
+        host: "{{ smtp_host }}"
+        port: "{{ smtp_port }}"
+        to: "{{ email_recipients }}"
+        from: "{{ email_from }}"
+        subject: "{{ email_subject | trim }}"
+        subtype: html
+        body: "{{ notification_body_html }}"
+      register: mail_result
+      ignore_errors: true
+      when: email_recipients is defined and (email_recipients | length > 0)
+
+    - name: Set email status
+      ansible.builtin.set_fact:
+        email_status: >-
+          {{ 'Sent' if (mail_result is succeeded and mail_result is not skipped)
+             else ('Skipped (no recipients)' if mail_result is skipped else 'Failed') }}
+        email_to: "{{ email_recipients if email_recipients is string else (email_recipients | join(', ')) }}"
+
+    ###########################################################################
+    # Slack: full step list on the approve path, one line on the deny path.
+    # The deny message can be switched off with slack_notify_on_deny=false.
+    ###########################################################################
+
+    - name: Post outcome to Slack
+      community.general.slack:
+        token: "{{ slack_token }}"
+        parse: none
+        msg: |
+          {% if overall_status == 'DENIED' %}
+          :no_entry_sign: *QUARANTINE DENIED — Alert 1109* (admin denied)
+          *User:* `{{ target_user }}`
+          *Host:* `{{ hostname }}`
+
+          *Result*
+          :information_source: *No action taken* — user was not changed
+          {{ ':white_check_mark:' if email_status == 'Sent' else (':information_source:' if email_status.startswith('Skipped') else ':x:') }} *Security team emailed* → `{{ email_status }}`
+
+          :arrow_right: <{{ workflow_url }}|View workflow run>
+          {% else %}
+          {% if overall_status == 'SUCCESS' %}
+          :shield: *REMEDIATION EXECUTED — Alert 1109* (admin approved)
+          {% else %}
+          :rotating_light: *REMEDIATION {{ overall_status }} — Alert 1109* (admin approved) — *manual action needed*
+          {% endif %}
+          *User:* `{{ target_user }}`
+          *Host:* `{{ hostname }}`
+
+          *Steps performed*
+          {{ icon_by_status.get(s_tso, ':x:') }} *1. End TSO session* → `{{ s_tso }}`{{ ' — ' ~ (tso_cancel_detail | default('') | truncate(120)) if (s_tso not in ok_tso_states and tso_cancel_detail is defined) else '' }}
+          {{ icon_by_status.get(s_revoke, ':x:') }} *2. Revoke account* → `{{ s_revoke }}`{{ ' — ' ~ (racf_revoke_detail | default('') | truncate(120)) if (s_revoke != 'Success' and racf_revoke_detail is defined) else '' }}
+          {{ ':white_check_mark:' if email_status == 'Sent' else (':information_source:' if email_status.startswith('Skipped') else ':x:') }} *3. Security team emailed* → `{{ email_status }}`
+          {% if overall_status != 'SUCCESS' %}
+
+          :warning: *Run manually on z/OS:*{% if s_tso not in ok_tso_states %} `C U={{ target_user }}`{% endif %}{% if s_revoke != 'Success' %} `ALTUSER {{ target_user }} REVOKE`{% endif %}
+
+          {% endif %}
+
+          :arrow_right: <{{ workflow_url }}|View workflow run>
+          {% endif %}
+      delegate_to: localhost
+      ignore_errors: true
+      when:
+        - slack_token is defined
+        - slack_token not in ('', None, 'None')
+        - overall_status != 'DENIED' or (slack_notify_on_deny | default(true) | bool)
+
+    ###########################################################################
+    # Publish outcome, then flag the run if something needs attention
+    ###########################################################################
+
+    - name: Publish final outcome
+      ansible.builtin.set_stats:
+        data:
+          quarantine_action: "{{ overall_status }}"
+          email_status: "{{ email_status }}"
+          email_recipients: "{{ email_to }}"
+          target_user: "{{ target_user }}"
+          alert_code: "{{ alert_code }}"
+        per_host: false
+
+    - name: Flag run when remediation is incomplete or the email failed
+      ansible.builtin.fail:
+        msg: >-
+          Alert 1109 outcome for {{ target_user }}: {{ overall_status }}
+          (end session: {{ s_tso }}, REVOKE: {{ s_revoke }},
+          email: {{ email_status }}). Manual follow-up required.
+      when: overall_status in ['PARTIAL', 'FAILED'] or email_status == 'Failed'

@@ -1,0 +1,115 @@
+{% include 'racf_alert_base.html.j2' %}
+{% set approved = (decision | default('denied')) == 'approved' %}
+{% set ok_tso = ['Success', 'No active session'] %}
+{% set show_listuser_output = false %}
+<h3>zSecure Alert 1109 — SPECIAL Authority Used by Non-SPECIAL User</h3>
+
+<div class="alert-box">
+  <p>
+    <b>Alert Code:</b> {{ alert_code | default('C2P1109I') }}<br/>
+    <b>User ID:</b> {{ target_user }}<br/>
+    <b>Hostname:</b> {{ hostname }}
+  </p>
+</div>
+
+<h4>What Happened</h4>
+<div class="warning-box">
+  <p><b>Triggering command:</b> <code>{{ alert_command | default('N/A', true) }}</code></p>
+  <p>
+    User <b>{{ target_user }}</b> executed a SPECIAL-level RACF command, but their
+    RACF profile does not carry the SPECIAL attribute. This means the user carried
+    SPECIAL authority from a previous session (before it was removed from their profile)
+    and used it — a privilege escalation gap that zSecure is designed to detect.
+  </p>
+</div>
+
+{% if not approved %}
+<h4>Admin Decision: Quarantine Denied</h4>
+<div class="info-box">
+  <p>
+    The admin reviewed the UAUDIT summary and <b>denied immediate quarantine</b>.<br/>
+    <b>No action has been taken against the user.</b>
+  </p>
+</div>
+{% else %}
+<h4>Admin Decision: Approved — Overall Result: {{ overall_status }}</h4>
+<div class="{{ 'info-box' if overall_status == 'SUCCESS' else 'alert-box' }}">
+  <p>
+    {% if overall_status == 'SUCCESS' %}
+    The admin approved containment. All remediation steps completed.
+    {% else %}
+    The admin approved containment, but <b>not every step succeeded</b>.
+    <b>Manual follow-up on z/OS is required</b> (see below).
+    {% endif %}
+  </p>
+</div>
+
+<table>
+  <tr><th>#</th><th>Step</th><th>Command</th><th>Result</th><th>Detail</th></tr>
+  <tr>
+    <td>1</td><td>End TSO session</td><td><code>C U={{ target_user }}</code></td>
+    <td><b>{{ s_tso }}</b></td><td>{{ tso_cancel_detail | default('') if s_tso not in ok_tso else '' }}</td>
+  </tr>
+  <tr>
+    <td>2</td><td>Revoke access</td><td><code>ALTUSER {{ target_user }} REVOKE</code></td>
+    <td><b>{{ s_revoke }}</b></td><td>{{ racf_revoke_detail | default('') if s_revoke != 'Success' else '' }}</td>
+  </tr>
+  <tr>
+    <td>3</td><td>Verification (LISTUSER)</td><td><code>LISTUSER {{ target_user }}</code></td>
+    <td><b>{{ s_verify }}</b></td><td></td>
+  </tr>
+</table>
+
+{% if overall_status != 'SUCCESS' %}
+<h4>Manual Follow-up Required</h4>
+<div class="warning-box">
+  <p>Run the following on z/OS for the steps that did not succeed:</p>
+  <ul>
+    {% if s_tso not in ok_tso %}<li><code>C U={{ target_user }}</code> — end the active TSO session</li>{% endif %}
+    {% if s_revoke != 'Success' %}<li><code>ALTUSER {{ target_user }} REVOKE</code> — revoke the account</li>{% endif %}
+  </ul>
+  <p>
+    "Unreachable" means the z/OS host could not be contacted from AAP; check connectivity first.
+    "Not run" means the earlier workflow job did not complete.
+  </p>
+</div>
+{% endif %}
+{% endif %}
+
+{% set uaudit_table = zlda_summary_recent | default(zlda_summary | default(''), true) %}
+{% if uaudit_table | trim != '' %}
+<h4>Recent UAUDIT Activity (ZLDA)</h4>
+<pre>{{ uaudit_table }}</pre>
+{% endif %}
+
+{% include 'racf_listuser_section.html.j2' %}
+
+<h4>{{ 'Suggested Investigation Steps' if not approved else 'Suggested Follow-up' }}</h4>
+<div class="info-box">
+  <ol>
+    <li>Check when SPECIAL was granted to <b>{{ target_user }}</b> and by whom (RACF audit log, SMF type 80).</li>
+    <li>Review all commands run in the session where the alert fired.</li>
+    <li>Determine if any datasets or resources were created or modified using SPECIAL authority.</li>
+    <li>Confirm whether the privilege use was intentional or accidental.</li>
+    {% if approved %}
+    <li>Decide when to restore access (<code>ALTUSER {{ target_user }} RESUME</code>) after the investigation.</li>
+    {% else %}
+    <li>Take appropriate action: REVOKE the user if malicious, or educate if accidental.</li>
+    {% endif %}
+  </ol>
+</div>
+
+<hr/>
+<p style="font-size: 0.9em; color: #666;">
+  <i>
+    Automated message from Event-Driven Ansible monitoring zSecure C2P1109I events.
+    {% if approved %}
+    Remediation was approved by an admin; results are listed above.
+    {% else %}
+    Admin denied quarantine. No RACF changes have been made.
+    {% endif %}
+  </i>
+</p>
+
+</body>
+</html>

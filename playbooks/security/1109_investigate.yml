@@ -1,0 +1,517 @@
+################################################################################
+# Copyright (c) IBM Corporation 2026
+################################################################################
+
+################################################################################
+# This playbook captures RACF user diagnostics when zSecure alert C2P1109I
+# (SPECIAL Authority Used by Non-SPECIAL User) is detected.
+#
+# Workflow position: Job 1 of 4 (Investigate -> Approval -> End Session ->
+# Revoke Access -> Notify and Email)
+#   "EDA - Alert 1109 Response Workflow"
+#
+# It is launched as the first job in the EDA - Alert 1109 Response Workflow,
+# triggered by the 1109_special_authority rulebook. The playbook:
+#
+#   1. Runs LISTUSER on the target z/OS system to gather the user's RACF
+#      profile (attributes, last access, default group).
+#   2. Queries the ZLDA Kafka stream (CDP-zOS-SMF80_COMMAND) for recent
+#      UAUDIT command history for the offending user — showing exactly which
+#      RACF commands were issued with SPECIAL authority, when, and against
+#      which resources.
+#   3. Publishes all findings as workflow artifacts via set_stats (visible
+#      in the AAP approval node for the admin to review).
+#   4. Posts a Slack notification to the admin channel with the RACF profile
+#      summary, the ZLDA UAUDIT command history, and a direct link to the
+#      AAP workflow (built from awx_workflow_job_id).
+#
+# The admin receives the Slack message, opens the AAP workflow link, reviews
+# the UAUDIT artifact, and clicks Approve or Deny:
+#   Approve  →  tso_cancel_user.yml (C U=userid), then
+#               racf_revoke.yml (REVOKE), then
+#               1109_notify_investigate.yml (email + Slack report)
+#   Deny     →  1109_notify_investigate.yml  (email security team, no action)
+#
+# Required configuration:
+# - `system_environment` must provide the environment needed to run z/OS tasks.
+# - The target host must be reachable and capable of running zos_tso_command.
+# - The `ibm.ibm_zos_core` collection must be installed and available.
+# - `slack_webhook` must be provided as an AAP credential or extra variable.
+#   It is NOT passed on to later jobs as an artifact.
+# - `aap_controller_host` must be set to build the workflow URL for Slack.
+# - `zlda_kafka_broker` must be set to the Kafka bootstrap server address.
+# - `zlda_kafka_cafile` must be the path to the SSL CA certificate file.
+#   The "Kafka CA Certificate" credential on the job template injects it.
+# - `zlda_kafka_verify_tls` (optional, default true): verify the broker
+#   certificate against the CA file. Set to false to skip verification.
+# - `zlda_kafka_verify_hostname` (optional, default true): also match the
+#   broker hostname to the certificate. Set to false if the certificate does
+#   not list the broker hostname but the chain should still be checked.
+# - This playbook must run inside the EDA - Alert 1109 Response Workflow so
+#   that `ansible_eda.events.c2p1109i` is populated.
+#
+# Published workflow artifacts (via set_stats):
+#   - lu_user_id       : RACF userid from LISTUSER output
+#   - lu_attributes    : current ATTRIBUTES field (should be NONE for 1109)
+#   - lu_last_access   : last access date/time
+#   - lu_default_group : default group
+#   - lu_owner         : profile owner
+#   - lu_joined        : full LISTUSER output text
+#   - zlda_summary     : formatted UAUDIT command history from ZLDA Kafka stream
+#   - zlda_summary_recent : same table limited to the last 10 records (used in the email)
+#   - zlda_status      : ok | unavailable (ZLDA could not be read; see zlda_reason)
+#   - zlda_reason      : why the ZLDA query was unavailable (empty when ok)
+#   - alert_command    : the SPECIAL command that triggered the alert
+#   - alert_code       : C2P1109I
+################################################################################
+
+---
+- name: Capture RACF user diagnostics - zSecure Alert 1109
+  hosts: "{{ target_hosts | default('zos_target') }}"
+  gather_facts: false
+  environment: "{{ system_environment | default({}) }}"
+
+  vars:
+    alert_code: >-
+      {{
+        ansible_eda.events.c2p1109i.body.alert_code
+        if (ansible_eda.events is defined and ansible_eda.events.c2p1109i is defined)
+        else (ansible_eda.event.body.alert_code if (ansible_eda.event is defined and ansible_eda.event.body is defined) else alert_code_var | default('C2P1109I', true))
+      }}
+    alert_message: >-
+      {{
+        ansible_eda.events.c2p1109i.body.alert_message
+        if (ansible_eda.events is defined and ansible_eda.events.c2p1109i is defined)
+        else (ansible_eda.event.body.alert_message if (ansible_eda.event is defined and ansible_eda.event.body is defined) else alert_message_var | default('', true))
+      }}
+    target_user: >-
+      {{
+        ansible_eda.events.c2p1109i.body.target_user
+        if (ansible_eda.events is defined and ansible_eda.events.c2p1109i is defined)
+        else (ansible_eda.event.body.target_user if (ansible_eda.event is defined and ansible_eda.event.body is defined) else target_user_var | default('UNKNOWN', true))
+      }}
+    hostname: >-
+      {{
+        ansible_eda.events.c2p1109i.body.hostname
+        if (ansible_eda.events is defined and ansible_eda.events.c2p1109i is defined)
+        else (ansible_eda.event.body.hostname if (ansible_eda.event is defined and ansible_eda.event.body is defined) else hostname_var | default('UNKNOWN', true))
+      }}
+
+    # AAP credentials & connection
+    aap_host: "{{ aap_controller_host | default('', true) }}"
+
+    # slack_webhook is injected by the AAP Slack Webhook credential via the
+    # job template extra var: slack_webhook: '{{ slack_webhook_token }}'
+    slack_token: "{{ slack_webhook | default('', true) }}"
+
+    # ZLDA Kafka stream connection — set in AAP job template extra vars
+    zlda_topic: "CDP-zOS-SMF80_COMMAND"
+
+    # TLS verification for the ZLDA Kafka connection (extra variables, default on)
+    zlda_verify_tls: "{{ zlda_kafka_verify_tls | default(true) | bool }}"
+    zlda_verify_hostname: "{{ zlda_kafka_verify_hostname | default(true) | bool }}"
+
+    # Build the AAP workflow visualizer URL using awx_workflow_job_id
+    workflow_url: >-
+      {{ 'https://' ~ aap_host ~ '/execution/jobs/workflow/' ~ awx_workflow_job_id
+         if (awx_workflow_job_id | default('', true) not in ('', None, 'None'))
+            and aap_host != ''
+         else 'N/A - set aap_controller_host in job template extra vars' }}
+
+  tasks:
+
+    ###########################################################################
+    # Safety check: target_user comes from an event and is placed into z/OS
+    # commands (LISTUSER) and a Python script, so it must be a valid RACF
+    # userid (1-8 characters: A-Z 0-9 # $ @) before anything else runs.
+    ###########################################################################
+
+    - name: Validate target_user is a RACF userid
+      ansible.builtin.assert:
+        that: (target_user | string | upper) is match('^[A-Z0-9#$@]{1,8}$')
+        fail_msg: "Refusing to act on invalid userid '{{ target_user }}'"
+        quiet: true
+
+    ###########################################################################
+    # Display alert context
+    ###########################################################################
+
+    - name: Display alert 1109 context
+      ansible.builtin.debug:
+        msg:
+          - "=========================================="
+          - "zSecure Alert 1109 — SPECIAL Authority Used by Non-SPECIAL User"
+          - "=========================================="
+          - "Alert Code    : {{ alert_code }}"
+          - "User          : {{ target_user }}"
+          - "Hostname      : {{ hostname }}"
+          - "Alert Message : {{ alert_message }}"
+
+    ###########################################################################
+    # Run LISTUSER to gather user profile
+    # Note: LISTUSER AUDIT is not used — the AUDIT segment is not installed
+    # on this system (returns RC=8 "INVALID SEGMENT, AUDIT"). UAUDIT command
+    # history is obtained from the ZLDA Kafka stream instead.
+    ###########################################################################
+
+    # ignore_unreachable keeps the play going if z/OS cannot be reached, so the
+    # ZLDA query, artifacts and the Slack alert still happen (profile fields
+    # then show UNKNOWN) instead of the alert producing no notification.
+    - name: Run LISTUSER on target user
+      ibm.ibm_zos_core.zos_tso_command:
+        commands: "LISTUSER {{ target_user }}"
+      register: listuser_output
+      ignore_errors: true
+      ignore_unreachable: true
+
+    - name: Build LISTUSER output string
+      ansible.builtin.set_fact:
+        lu_joined: "{{ listuser_output.output[0].content | join('\n') }}"
+      when:
+        - listuser_output is not unreachable
+        - listuser_output is succeeded
+        - listuser_output.output is defined
+
+    - name: Set defaults if LISTUSER failed
+      ansible.builtin.set_fact:
+        lu_joined: "LISTUSER command failed, user not found, or z/OS host unreachable."
+        lu_user_id: "UNKNOWN"
+        lu_attributes: "UNKNOWN"
+        lu_last_access: "UNKNOWN"
+        lu_default_group: "UNKNOWN"
+        lu_owner: "UNKNOWN"
+      when: listuser_output is unreachable or listuser_output is failed or listuser_output.output is not defined
+
+    ###########################################################################
+    # Parse key fields from LISTUSER output
+    ###########################################################################
+
+    # The UNKNOWN fallback is applied BEFORE the prefix is stripped. When a
+    # field is not found, regex_search returns None, and regex_replace would turn
+    # that into the text "None" - which looks like RACF's own "NONE" attribute.
+    - name: Parse LISTUSER key fields
+      ansible.builtin.set_fact:
+        lu_user_id: >-
+          {{ (lu_joined | regex_search('USER=[^ ]+') or 'USER=UNKNOWN')
+             | regex_replace('^USER=', '') }}
+        lu_owner: >-
+          {{ (lu_joined | regex_search('OWNER=[^ ]+') or 'OWNER=UNKNOWN')
+             | regex_replace('^OWNER=', '') }}
+        lu_default_group: >-
+          {{ (lu_joined | regex_search('DEFAULT-GROUP=[^ ]+') or 'DEFAULT-GROUP=UNKNOWN')
+             | regex_replace('^DEFAULT-GROUP=', '') }}
+        lu_attributes: >-
+          {{ (lu_joined | regex_search('ATTRIBUTES=[^\n]+') or 'ATTRIBUTES=UNKNOWN')
+             | regex_replace('^ATTRIBUTES=', '') }}
+        lu_last_access: >-
+          {{ (lu_joined | regex_search('LAST-ACCESS=[^ ]+') or 'LAST-ACCESS=UNKNOWN')
+             | regex_replace('^LAST-ACCESS=', '') }}
+      when:
+        - listuser_output is not unreachable
+        - listuser_output is succeeded
+        - listuser_output.output is defined
+
+    - name: Display parsed LISTUSER fields
+      ansible.builtin.debug:
+        msg:
+          - "User ID       : {{ lu_user_id }}"
+          - "Owner         : {{ lu_owner }}"
+          - "Default Group : {{ lu_default_group }}"
+          - "Attributes    : {{ lu_attributes }}"
+          - "Last Access   : {{ lu_last_access }}"
+
+    ###########################################################################
+    # Query ZLDA CDP-zOS-SMF80_COMMAND Kafka stream for recent UAUDIT history
+    #
+    # The ZLDA stream provides pre-parsed SMF 80 records with named fields:
+    #   USER_ID, COMMAND, RESOURCE_NAME, SPECIAL, FAILED, TERMINAL_ID,
+    #   EVENT_DESC, TIMESTAMP — confirmed flowing from EC03226A on 2026-10-23.
+    #
+    # The script polls the topic for zlda_poll_timeout_ms milliseconds and
+    # collects all records matching the target user. This captures commands
+    # issued in the window around the alert trigger.
+    ###########################################################################
+
+    - name: Query ZLDA Kafka stream for recent UAUDIT command history
+      ansible.builtin.shell: |
+        python3 - <<'PYEOF'
+        import json, sys, os
+
+        # Always prints one JSON object: status "ok" with the records, or status
+        # "unavailable" with a reason, so the approver can tell "no activity"
+        # apart from "could not read the stream".
+        def bail(reason):
+            print(json.dumps({"status": "unavailable", "reason": reason, "records": []}))
+            sys.stderr.write("ZLDA unavailable: " + reason + "\n")
+            sys.exit(0)
+
+        try:
+            from kafka import KafkaConsumer, TopicPartition
+        except ImportError as e:
+            bail(f"kafka-python is not installed: {e}")
+
+        cafile = '{{ zlda_kafka_cafile | default('', true) }}'
+        broker = '{{ zlda_kafka_broker | default('', true) }}'
+        if not broker:
+            bail("zlda_kafka_broker is not configured")
+
+        # TLS verification is ON by default. Set zlda_kafka_verify_tls=false in the
+        # job template extra variables to connect without verifying the broker.
+        # zlda_kafka_verify_hostname=false keeps the certificate chain check but
+        # skips the hostname match.
+        verify_tls = {{ zlda_verify_tls }}
+        verify_hostname = {{ zlda_verify_hostname }}
+
+        import ssl
+        ssl_ctx = ssl.create_default_context()
+        if verify_tls:
+            # Fail closed: without a usable CA file there is nothing to verify against.
+            if not (cafile and os.path.exists(cafile)):
+                bail(f"TLS verification is on but the CA file was not found ({cafile}). Attach the Kafka CA credential or set zlda_kafka_verify_tls=false")
+            try:
+                ssl_ctx.load_verify_locations(cafile=cafile)
+            except Exception as ce:
+                bail(f"could not load CA file {cafile}: {ce}")
+            ssl_ctx.verify_mode = ssl.CERT_REQUIRED
+            ssl_ctx.check_hostname = verify_hostname
+            sys.stderr.write(f"ZLDA info: TLS verification ON (CA file {cafile}, hostname check {verify_hostname})\n")
+        else:
+            ssl_ctx.check_hostname = False
+            ssl_ctx.verify_mode = ssl.CERT_NONE
+            sys.stderr.write("ZLDA warning: TLS verification is OFF (zlda_kafka_verify_tls=false)\n")
+
+        ssl_kwargs = {
+            'security_protocol': 'SSL',
+            'ssl_context': ssl_ctx,
+        }
+
+        # Only the configured topic is used. Asking a broker about topic names
+        # that do not exist can create them when auto-create is enabled.
+        topic = '{{ zlda_topic }}'
+
+        try:
+            consumer = KafkaConsumer(
+                bootstrap_servers=[broker],
+                api_version=(3, 4, 1),
+                enable_auto_commit=False,
+                consumer_timeout_ms=5000,
+                value_deserializer=lambda x: x.decode('utf-8', errors='replace'),
+                **ssl_kwargs
+            )
+        except Exception as e:
+            bail(f"connection error: {e}")
+
+        try:
+            parts = consumer.partitions_for_topic(topic)
+        except Exception as pe:
+            bail(f"could not read metadata for topic {topic}: {pe}")
+        if not parts:
+            bail(f"topic {topic} was not found or has no partitions")
+
+        assigned_tps = [TopicPartition(topic, p) for p in parts]
+        consumer.assign(assigned_tps)
+        try:
+            end_offsets = consumer.end_offsets(assigned_tps)
+            for tp in assigned_tps:
+                end_off = end_offsets.get(tp, 0)
+                consumer.seek(tp, max(0, end_off - 100))
+        except Exception as e:
+            bail(f"could not read offsets for topic {topic}: {e}")
+
+        import base64
+        # target_user is passed base64-encoded so no character in it can alter the script
+        target = base64.b64decode('{{ target_user | b64encode }}').decode('utf-8', 'replace').strip().upper()
+        alert_msg = base64.b64decode('{{ alert_message | b64encode }}').decode('utf-8', 'replace').upper()
+        records = []
+
+        try:
+            for msg in consumer:
+                try:
+                    rec = json.loads(msg.value)
+                except Exception:
+                    continue
+
+                user = (rec.get('USER_ID') or rec.get('USER') or rec.get('USERID') or '').strip().upper()
+                resource = str(rec.get('RESOURCE_NAME', '')).strip()
+                # Keep commands ISSUED BY the target user AND commands issued AGAINST the
+                # target user (e.g. ALTUSER <target> by another admin). [1109-UAUDIT-V2]
+                if user == target or resource.upper() == target:
+                    records.append({
+                        'timestamp':       str(rec.get('TIMESTAMP', '')).strip(),
+                        'by':              user,
+                        'command':         str(rec.get('COMMAND', '')).strip(),
+                        'resource':        resource,
+                        'special':         str(rec.get('SPECIAL', 'N')).strip(),
+                        'auditor':         str(rec.get('AUDITOR', 'N')).strip(),
+                        'failed':          str(rec.get('FAILED', 'N')).strip(),
+                        'terminal':        str(rec.get('TERMINAL_ID', '')).strip(),
+                        'authority_flags': str(rec.get('AUTHORITY_FLAGS', '')).strip(),
+                        'event_desc':      str(rec.get('EVENT_DESC', '')).strip(),
+                        'trigger':         False,
+                    })
+        except Exception as e:
+            bail(f"error while reading topic {topic}: {e}")
+
+        records.sort(key=lambda r: r['timestamp'])
+
+        # Flag the most recent record matching the alert command + resource
+        trigger_idx = None
+        for i, r in enumerate(records):
+            if (r['by'] == target and r['command'] and r['resource']
+                    and r['command'].upper() in alert_msg
+                    and r['resource'].upper() in alert_msg):
+                trigger_idx = i
+        if trigger_idx is not None:
+            records[trigger_idx]['trigger'] = True
+
+        consumer.close()
+        print(json.dumps({"status": "ok", "reason": "", "records": records}))
+        PYEOF
+      delegate_to: localhost
+      register: zlda_raw
+      ignore_errors: true
+
+    - name: Display ZLDA query debug output
+      ansible.builtin.debug:
+        msg:
+          - "ZLDA stdout : {{ zlda_raw.stdout | default('') }}"
+          - "ZLDA stderr : {{ zlda_raw.stderr | default('') }}"
+
+    # The script prints {"status": "ok"|"unavailable", "reason": ..., "records": [...]}.
+    # Anything else (script crashed, no output) is treated as unavailable too.
+    - name: Parse ZLDA UAUDIT result
+      ansible.builtin.set_fact:
+        zlda_result: >-
+          {{ (zlda_raw.stdout | from_json)
+             if (zlda_raw is succeeded and zlda_raw.stdout | default('') | trim != '')
+             else {'status': 'unavailable',
+                   'reason': ('ZLDA query did not run: ' ~ (zlda_raw.stderr | default(zlda_raw.msg | default('no output'), true) | truncate(200))),
+                   'records': []} }}
+      ignore_errors: true
+
+    - name: Set ZLDA records and status
+      ansible.builtin.set_fact:
+        zlda_records: "{{ zlda_result.records | default([]) if (zlda_result is mapping) else [] }}"
+        zlda_status: "{{ zlda_result.status | default('unavailable') if (zlda_result is mapping) else 'unavailable' }}"
+        zlda_reason: >-
+          {{ (zlda_result.reason | default('')) if (zlda_result is mapping)
+             else 'ZLDA output could not be read' }}
+
+    # Full table (all fields) — published as a workflow artifact for the approver.
+    - name: Build ZLDA UAUDIT summary string
+      ansible.builtin.set_fact:
+        zlda_summary: |
+          {% if zlda_records | length > 0 %}
+          TIMESTAMP               | BY       | COMMAND  | RESOURCE                       | SPECIAL | AUDITOR | FAILED | TERMINAL | AUTH FLAGS | OUTCOME
+          ------------------------+----------+----------+--------------------------------+---------+---------+--------+----------+------------+------------------
+          {% for r in zlda_records %}
+          {{ "%-23s" | format(r.timestamp) }} | {{ "%-8s" | format(r.by) }} | {{ "%-8s" | format(r.command) }} | {{ "%-30s" | format(r.resource) }} | {{ "%-7s" | format(r.special) }} | {{ "%-7s" | format(r.auditor) }} | {{ "%-6s" | format(r.failed) }} | {{ "%-8s" | format(r.terminal) }} | {{ "%-10s" | format(r.authority_flags) }} | {{ r.event_desc }}{{ '   << TRIGGER' if r.trigger else '' }}
+          {% endfor %}
+          {% else %}
+          {{ ('No UAUDIT records found in ZLDA stream for ' ~ target_user ~ ' in this poll window.') if zlda_status == 'ok' else ('ZLDA UNAVAILABLE - history could not be read: ' ~ zlda_reason) }}
+          {% endif %}
+
+    # Same columns as the full table but only the last zlda_slack_max_rows records
+    # (the trigger row is always kept) — used in the notification email.
+    - name: Build recent ZLDA table for the email
+      vars:
+        zlda_slack_max_rows: 10
+        zlda_cutoff: "{{ zlda_records | length - zlda_slack_max_rows }}"
+      ansible.builtin.set_fact:
+        zlda_summary_recent: |
+          {% if zlda_records | length > 0 %}
+          {% if zlda_cutoff | int > 0 %}
+          Showing the last {{ zlda_slack_max_rows }} of {{ zlda_records | length }} records - full list in workflow artifact zlda_summary
+          {% endif %}
+          TIMESTAMP               | BY       | COMMAND  | RESOURCE                       | SPECIAL | AUDITOR | FAILED | TERMINAL | AUTH FLAGS | OUTCOME
+          ------------------------+----------+----------+--------------------------------+---------+---------+--------+----------+------------+------------------
+          {% for r in zlda_records %}
+          {% if loop.index0 >= zlda_cutoff | int or r.trigger %}
+          {{ "%-23s" | format(r.timestamp) }} | {{ "%-8s" | format(r.by) }} | {{ "%-8s" | format(r.command) }} | {{ "%-30s" | format(r.resource) }} | {{ "%-7s" | format(r.special) }} | {{ "%-7s" | format(r.auditor) }} | {{ "%-6s" | format(r.failed) }} | {{ "%-8s" | format(r.terminal) }} | {{ "%-10s" | format(r.authority_flags) }} | {{ r.event_desc }}{{ '   << TRIGGER' if r.trigger else '' }}
+          {% endif %}
+          {% endfor %}
+          {% else %}
+          {{ ('No UAUDIT records found in ZLDA stream for ' ~ target_user ~ ' in this poll window.') if zlda_status == 'ok' else ('ZLDA UNAVAILABLE - history could not be read: ' ~ zlda_reason) }}
+          {% endif %}
+
+    # Compact table — used in the Slack message only (full detail is in the artifact).
+    # Shows the last zlda_slack_max_rows records (the trigger row is always kept).
+    - name: Build compact ZLDA table for Slack
+      vars:
+        zlda_slack_max_rows: 10
+        zlda_cutoff: "{{ zlda_records | length - zlda_slack_max_rows }}"
+      ansible.builtin.set_fact:
+        zlda_slack_table: |
+          {% if zlda_records | length > 0 %}
+          {% if zlda_cutoff | int > 0 %}
+          ... showing last {{ zlda_slack_max_rows }} of {{ zlda_records | length }} records - full list in workflow artifact zlda_summary
+          {% endif %}
+          TIME (system)  BY       COMMAND  RESOURCE             OUTCOME
+          {% for r in zlda_records %}
+          {% if loop.index0 >= zlda_cutoff | int or r.trigger %}
+          {{ "%-14s" | format(r.timestamp[5:19]) }} {{ "%-8s" | format(r.by) }} {{ "%-8s" | format(r.command) }} {{ "%-20s" | format(r.resource[:19] ~ '…' if r.resource | length > 20 else r.resource) }} {{ r.event_desc }}{{ ' << TRIGGER' if r.trigger else '' }}
+          {% endif %}
+          {% endfor %}
+          {% else %}
+          {{ ('No UAUDIT records found for ' ~ target_user ~ ' in this poll window.')
+             if zlda_status == 'ok'
+             else (':warning: ZLDA unavailable - history could not be read: ' ~ (zlda_reason | truncate(150))) }}
+          {% endif %}
+
+    - name: Display ZLDA UAUDIT summary
+      ansible.builtin.debug:
+        msg:
+          - "=== ZLDA UAUDIT Command History for {{ target_user }} ==="
+          - "{{ zlda_summary }}"
+          - "Total UAUDIT records found: {{ zlda_records | length }}"
+
+    ###########################################################################
+    # Publish workflow artifacts for the approval node and downstream jobs
+    ###########################################################################
+
+    - name: Publish UAUDIT findings as workflow artifacts
+      ansible.builtin.set_stats:
+        data:
+          lu_user_id: "{{ lu_user_id }}"
+          lu_attributes: "{{ lu_attributes }}"
+          lu_last_access: "{{ lu_last_access }}"
+          lu_default_group: "{{ lu_default_group }}"
+          lu_owner: "{{ lu_owner }}"
+          lu_joined: "{{ lu_joined }}"
+          zlda_summary: "{{ zlda_summary }}"
+          zlda_summary_recent: "{{ zlda_summary_recent }}"
+
+          zlda_record_count: "{{ zlda_records | length }}"
+          zlda_status: "{{ zlda_status }}"
+          zlda_reason: "{{ zlda_reason }}"
+          alert_command: "{{ alert_message }}"
+          alert_code: "{{ alert_code }}"
+          target_user: "{{ target_user }}"
+          hostname: "{{ hostname }}"
+        per_host: false
+
+    ###########################################################################
+    # Post Slack notification to admin with RACF profile + ZLDA UAUDIT history
+    ###########################################################################
+
+    - name: Post Slack alert notification to admin
+      community.general.slack:
+        token: "{{ slack_token }}"
+        parse: none
+        msg: |
+          :rotating_light: *zSecure Alert 1109 — SPECIAL authority used by non-SPECIAL user*
+          *User:* `{{ target_user }}`
+          *Host:* `{{ hostname }}`
+          *Command:* `{{ alert_message | regex_replace('(?s)^.*issued SPECIAL command[ \n]*', '') | trim }}`
+
+          *Recent activity — {{ (zlda_records | length ~ ' record(s)') if zlda_status == 'ok' else 'unavailable' }}*
+          ```
+          {{ zlda_slack_table }}
+          ```
+          *Decision needed*
+          :white_check_mark: *Approve* — Cancel user session and revoke
+          :x: *Deny* — Email security team, no action taken
+          :point_right: <{{ workflow_url }}|Open workflow to approve or deny>
+      delegate_to: localhost
+      ignore_errors: true
+      when: slack_token is defined and slack_token not in ('', None, 'None')

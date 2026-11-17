@@ -1,0 +1,168 @@
+################################################################################
+# Copyright (c) IBM Corporation 2026
+################################################################################
+
+################################################################################
+# Playbook: RACF user revoke
+#
+# Revokes a RACF user account. Runs directly as
+# an AAP job template (for example "EDA - 1109 Revoke Access" in the 1109
+# response workflow) and can also be called via import_playbook from other
+# playbooks.
+#
+# Workflow position (zSecure Alert 1109), runs after End Session:
+#   End Session (tso_cancel_user.yml) --always--> Revoke Access (this playbook)
+#                                                  --always--> Notify and Email
+#
+# Why there is no ALTUSER NOSPECIAL step: alert 1109 only fires when the
+# user's RACF profile no longer carries SPECIAL, so there is nothing to
+# remove. The user is only revoked (and the active session ended by the
+# End Session job).
+#
+# Error handling:
+#   - Connectivity is verified first (wait_for_connection, default 60 s).
+#     If the host cannot be reached no command is attempted and the step is
+#     reported as "Unreachable".
+#   - ignore_unreachable keeps the host in the play if the connection drops
+#     mid-task, so later steps and the caller can still report the outcome.
+#   - After the changes a LISTUSER is run to verify them. Verification is
+#     informational only; it never changes the step statuses.
+#   - This playbook never aborts the workflow. The caller decides what a
+#     non-success status means.
+#
+# Caller must supply:
+#   target_user        : RACF userid to revoke
+#   system_environment : z/OS environment vars for zos_tso_command
+# Optional:
+#   zos_connect_timeout_s : seconds to wait for connectivity (default 60)
+#
+# Artifacts published with set_stats (passed on to the next workflow job):
+#   admin_decision        : approved (published first, survives a later failure)
+#   racf_revoke_status    / racf_revoke_detail    : Success | Failed | Unreachable
+#   racf_verify_status    : Verified | Not verified | Unavailable
+# The same racf_* values are also set as facts on localhost for callers that
+# use import_playbook.
+#
+# NOTE: verification looks for "REVOKED" in the ATTRIBUTES line of LISTUSER;
+# confirm this matches real output on your system.
+################################################################################
+
+---
+- name: Record admin approval (published first so it survives a later failure)
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Publish admin decision
+      ansible.builtin.set_stats:
+        data:
+          admin_decision: approved
+        per_host: false
+
+- name: RACF remediation - revoke user
+  hosts: "{{ target_hosts | default('zos_target') }}"
+  gather_facts: false
+  environment: "{{ system_environment | default({}) }}"
+
+  tasks:
+
+    # target_user comes from an event and goes into a z/OS command, so it must
+    # be a valid RACF userid (1-8 characters: A-Z 0-9 # $ @) before anything runs.
+    - name: Validate target_user is a RACF userid
+      ansible.builtin.assert:
+        that: (target_user | string | upper) is match('^[A-Z0-9#$@]{1,8}$')
+        fail_msg: "Refusing to act on invalid userid '{{ target_user }}'"
+        quiet: true
+
+
+    - name: Verify connectivity to z/OS host
+      ansible.builtin.wait_for_connection:
+        timeout: "{{ zos_connect_timeout_s | default(60) | int }}"
+        delay: 0
+        sleep: 5
+      register: conn_check
+      ignore_errors: true
+      ignore_unreachable: true
+
+    - name: Set connectivity fact
+      ansible.builtin.set_fact:
+        zos_conn_ok: "{{ conn_check is succeeded and conn_check is not unreachable }}"
+
+    ###########################################################################
+    # Step 1 - Revoke the user account
+    ###########################################################################
+
+    - name: Revoke user account
+      ibm.ibm_zos_core.zos_tso_command:
+        commands: "ALTUSER {{ target_user }} REVOKE"
+      register: revoke_result
+      ignore_errors: true
+      ignore_unreachable: true
+      when: zos_conn_ok | bool
+
+    - name: Set REVOKE status and detail
+      ansible.builtin.set_fact:
+        racf_revoke_status: >-
+          {{ 'Unreachable' if (not (zos_conn_ok | bool) or revoke_result is unreachable)
+             else ('Failed' if revoke_result is failed else 'Success') }}
+        racf_revoke_detail: >-
+          {{ ('Host not reachable: ' ~ (conn_check.msg | default('timeout')))
+             if (not (zos_conn_ok | bool))
+             else (((revoke_result.msg | default('')) ~ ' ' ~ (revoke_result.output[0].content | default([]) | join(' ')
+                    if (revoke_result.output is defined and revoke_result.output | length > 0) else '')) | trim | truncate(300)) }}
+
+    - name: Log REVOKE result
+      ansible.builtin.debug:
+        msg:
+          - "ALTUSER {{ target_user }} REVOKE"
+          - "Status : {{ racf_revoke_status }}"
+          - "Detail : {{ racf_revoke_detail }}"
+
+    ###########################################################################
+    # Step 2 - Verify the change with LISTUSER (informational only)
+    ###########################################################################
+
+    - name: Confirm RACF changes with LISTUSER
+      ibm.ibm_zos_core.zos_tso_command:
+        commands: "LISTUSER {{ target_user }}"
+      register: confirm_output
+      ignore_errors: true
+      ignore_unreachable: true
+      when: zos_conn_ok | bool
+
+    - name: Set LISTUSER confirmation facts
+      ansible.builtin.set_fact:
+        racf_confirm_output: >-
+          {{ confirm_output.output[0].content | join('\n')
+             if (confirm_output is succeeded and confirm_output is not unreachable and confirm_output is not skipped
+                 and confirm_output.output is defined and confirm_output.output | length > 0)
+             else 'LISTUSER output not available' }}
+
+    - name: Set verification status
+      ansible.builtin.set_fact:
+        racf_verify_status: >-
+          {{ 'Unavailable' if racf_confirm_output == 'LISTUSER output not available'
+             else ('Verified' if racf_confirm_output is search('ATTRIBUTES=[^\n]*REVOKED')
+                   else 'Not verified') }}
+
+    - name: Display LISTUSER confirmation
+      ansible.builtin.debug:
+        msg:
+          - "Verification : {{ racf_verify_status }}"
+          - "{{ racf_confirm_output }}"
+
+    - name: Publish RACF outcome as workflow artifacts
+      ansible.builtin.set_stats:
+        data:
+          racf_revoke_status: "{{ racf_revoke_status }}"
+          racf_revoke_detail: "{{ racf_revoke_detail }}"
+          racf_verify_status: "{{ racf_verify_status }}"
+        per_host: false
+
+    - name: Share RACF status facts with localhost
+      ansible.builtin.set_fact:
+        racf_revoke_status: "{{ racf_revoke_status }}"
+        racf_revoke_detail: "{{ racf_revoke_detail }}"
+        racf_verify_status: "{{ racf_verify_status }}"
+      delegate_to: localhost
+      delegate_facts: true
