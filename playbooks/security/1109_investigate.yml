@@ -34,8 +34,9 @@
 #
 # Required configuration:
 # - `system_environment` must provide the environment needed to run z/OS tasks.
-# - The target host must be reachable and capable of running zos_tso_command.
-# - The `ibm.ibm_zos_core` collection must be installed and available.
+# - The target host must be reachable and capable of running zos_user_info.
+# - The `ibm.ibm_zos_core` collection, version 2.1.0 or later (zos_user_info
+#   is not available in earlier versions), must be installed and available.
 # - `slack_webhook` must be provided as an AAP credential or extra variable.
 #   It is NOT passed on to later jobs as an artifact.
 # - `aap_controller_host` must be set to build the workflow URL for Slack.
@@ -154,25 +155,36 @@
     # history is obtained from the ZLDA Kafka stream instead.
     ###########################################################################
 
-    # ignore_unreachable keeps the play going if z/OS cannot be reached, so the
-    # ZLDA query, artifacts and the Slack alert still happen (profile fields
-    # then show UNKNOWN) instead of the alert producing no notification.
-    - name: Run LISTUSER on target user
-      ibm.ibm_zos_core.zos_tso_command:
-        commands: "LISTUSER {{ target_user }}"
+    # zos_user_info (ibm_zos_core 2.1.0 or later) runs LISTUSER and returns the
+    # profile as named fields in segments.base_segment, so no text parsing is
+    # needed. ignore_unreachable keeps the play going if z/OS cannot be reached,
+    # so the ZLDA query, artifacts and the Slack alert still happen (profile
+    # fields then show UNKNOWN) instead of the alert producing no notification.
+    - name: Get RACF user profile
+      ibm.ibm_zos_core.zos_user_info:
+        name: "{{ target_user }}"
+        profile_type: user
       register: listuser_output
       ignore_errors: true
       ignore_unreachable: true
 
-    - name: Build LISTUSER output string
+    - name: Decide whether the user profile is usable
       ansible.builtin.set_fact:
-        lu_joined: "{{ listuser_output.output[0].content | join('\n') }}"
-      when:
-        - listuser_output is not unreachable
-        - listuser_output is succeeded
-        - listuser_output.output is defined
+        lu_usable: >-
+          {{ listuser_output is not unreachable
+             and listuser_output is succeeded
+             and ((listuser_output.segments | default({})).base_segment | default({}) | length) > 0 }}
 
-    - name: Set defaults if LISTUSER failed
+    # Shows what the module returned, so a failure (profile not found, missing
+    # tsocmd, unreachable host) is visible in the job output.
+    - name: Show user profile lookup result
+      ansible.builtin.debug:
+        msg:
+          - "Profile lookup rc     : {{ listuser_output.rc | default('n/a') }}"
+          - "Profile lookup msg    : {{ listuser_output.msg | default('') }}"
+          - "Profile usable        : {{ lu_usable }}"
+
+    - name: Set defaults if the user profile is not usable
       ansible.builtin.set_fact:
         lu_joined: "LISTUSER command failed, user not found, or z/OS host unreachable."
         lu_user_id: "UNKNOWN"
@@ -180,36 +192,25 @@
         lu_last_access: "UNKNOWN"
         lu_default_group: "UNKNOWN"
         lu_owner: "UNKNOWN"
-      when: listuser_output is unreachable or listuser_output is failed or listuser_output.output is not defined
+      when: not (lu_usable | bool)
 
     ###########################################################################
-    # Parse key fields from LISTUSER output
+    # Read key fields from the profile
     ###########################################################################
 
-    # The UNKNOWN fallback is applied BEFORE the prefix is stripped. When a
-    # field is not found, regex_search returns None, and regex_replace would turn
-    # that into the text "None" - which looks like RACF's own "NONE" attribute.
-    - name: Parse LISTUSER key fields
+    # ATTRIBUTES is returned as a list (for example ["UAUDIT"]); an empty list
+    # is shown as NONE. The raw LISTUSER text (stdout) is kept in lu_joined.
+    - name: Read user profile fields
       ansible.builtin.set_fact:
-        lu_user_id: >-
-          {{ (lu_joined | regex_search('USER=[^ ]+') or 'USER=UNKNOWN')
-             | regex_replace('^USER=', '') }}
-        lu_owner: >-
-          {{ (lu_joined | regex_search('OWNER=[^ ]+') or 'OWNER=UNKNOWN')
-             | regex_replace('^OWNER=', '') }}
-        lu_default_group: >-
-          {{ (lu_joined | regex_search('DEFAULT-GROUP=[^ ]+') or 'DEFAULT-GROUP=UNKNOWN')
-             | regex_replace('^DEFAULT-GROUP=', '') }}
-        lu_attributes: >-
-          {{ (lu_joined | regex_search('ATTRIBUTES=[^\n]+') or 'ATTRIBUTES=UNKNOWN')
-             | regex_replace('^ATTRIBUTES=', '') }}
-        lu_last_access: >-
-          {{ (lu_joined | regex_search('LAST-ACCESS=[^ ]+') or 'LAST-ACCESS=UNKNOWN')
-             | regex_replace('^LAST-ACCESS=', '') }}
-      when:
-        - listuser_output is not unreachable
-        - listuser_output is succeeded
-        - listuser_output.output is defined
+        lu_joined: "{{ listuser_output.stdout | default('', true) }}"
+        lu_user_id: "{{ base['USER'] | default('UNKNOWN', true) }}"
+        lu_owner: "{{ base['OWNER'] | default('UNKNOWN', true) }}"
+        lu_default_group: "{{ base['DEFAULT-GROUP'] | default('UNKNOWN', true) }}"
+        lu_attributes: "{{ ([base['ATTRIBUTES'] | default([], true)] | flatten | join(' ')) or 'NONE' }}"
+        lu_last_access: "{{ base['LAST-ACCESS'] | default('UNKNOWN', true) }}"
+      vars:
+        base: "{{ listuser_output.segments.base_segment }}"
+      when: lu_usable | bool
 
     - name: Display parsed LISTUSER fields
       ansible.builtin.debug:

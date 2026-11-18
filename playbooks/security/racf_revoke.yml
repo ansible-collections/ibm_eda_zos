@@ -100,6 +100,8 @@
       ignore_unreachable: true
       when: zos_conn_ok | bool
 
+    # ibm_zos_core 1.x returns the command text in output[0].content; 2.x
+    # returns it in output[0].stdout_lines. Read whichever exists.
     - name: Set REVOKE status and detail
       ansible.builtin.set_fact:
         racf_revoke_status: >-
@@ -108,8 +110,11 @@
         racf_revoke_detail: >-
           {{ ('Host not reachable: ' ~ (conn_check.msg | default('timeout')))
              if (not (zos_conn_ok | bool))
-             else (((revoke_result.msg | default('')) ~ ' ' ~ (revoke_result.output[0].content | default([]) | join(' ')
-                    if (revoke_result.output is defined and revoke_result.output | length > 0) else '')) | trim | truncate(300)) }}
+             else (((revoke_result.msg | default('')) ~ ' '
+                    ~ ((revoke_result.output[0].stdout_lines | default(revoke_result.output[0].content, true)
+                        | default([], true)) | join(' '))
+                    if (revoke_result.output is defined and revoke_result.output | length > 0) else '')
+                   | trim | truncate(300)) }}
 
     - name: Log REVOKE result
       ansible.builtin.debug:
@@ -122,9 +127,12 @@
     # Step 2 - Verify the change with LISTUSER (informational only)
     ###########################################################################
 
+    # zos_user_info needs ibm_zos_core 2.1.0 or later. It returns the profile as
+    # named fields; ATTRIBUTES is a list that contains REVOKED once revoked.
     - name: Confirm RACF changes with LISTUSER
-      ibm.ibm_zos_core.zos_tso_command:
-        commands: "LISTUSER {{ target_user }}"
+      ibm.ibm_zos_core.zos_user_info:
+        name: "{{ target_user }}"
+        profile_type: user
       register: confirm_output
       ignore_errors: true
       ignore_unreachable: true
@@ -133,16 +141,18 @@
     - name: Set LISTUSER confirmation facts
       ansible.builtin.set_fact:
         racf_confirm_output: >-
-          {{ confirm_output.output[0].content | join('\n')
+          {{ confirm_output.stdout
              if (confirm_output is succeeded and confirm_output is not unreachable and confirm_output is not skipped
-                 and confirm_output.output is defined and confirm_output.output | length > 0)
+                 and (confirm_output.stdout | default('', true) | trim | length) > 0)
              else 'LISTUSER output not available' }}
+        racf_confirm_attributes: >-
+          {{ (((confirm_output.segments | default({})).base_segment | default({})).ATTRIBUTES | default([], true)) }}
 
     - name: Set verification status
       ansible.builtin.set_fact:
         racf_verify_status: >-
           {{ 'Unavailable' if racf_confirm_output == 'LISTUSER output not available'
-             else ('Verified' if racf_confirm_output is search('ATTRIBUTES=[^\n]*REVOKED')
+             else ('Verified' if ('REVOKED' in racf_confirm_attributes)
                    else 'Not verified') }}
 
     - name: Display LISTUSER confirmation

@@ -60,6 +60,7 @@
     icon_by_status:
       Success: ":white_check_mark:"
       No active session: ":white_check_mark:"
+      Success (unconfirmed): ":warning:"
       Not run: ":grey_question:"
 
     email_recipients: "{{ security_alert_recipients | default([], true) }}"

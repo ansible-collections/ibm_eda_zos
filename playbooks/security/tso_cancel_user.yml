@@ -110,12 +110,20 @@
       ignore_unreachable: true
       when: zos_conn_ok | bool
 
+    # ibm_zos_core 1.x returns the operator response in content; 2.x returns it
+    # in stdout_lines. Read whichever exists.
     - name: Classify session termination result
       ansible.builtin.set_fact:
+        tso_cancel_response: >-
+          {{ (cancel_result.stdout_lines | default(cancel_result.content, true) | default([], true)) | join(' ') }}
         tso_cancel_text: >-
-          {{ ((cancel_result.content | default([]) | join(' ')) ~ ' ' ~ (cancel_result.msg | default(''))) | upper }}
+          {{ (((cancel_result.stdout_lines | default(cancel_result.content, true) | default([], true)) | join(' '))
+              ~ ' ' ~ (cancel_result.msg | default(''))) | upper }}
       when: zos_conn_ok | bool
 
+    # With no response text the module's success cannot be confirmed, so it is
+    # reported as "Success (unconfirmed)". Notify treats that as not OK and
+    # shows the manual C U= command.
     - name: Set TSO cancel status and detail
       ansible.builtin.set_fact:
         tso_cancel_status: >-
@@ -123,7 +131,8 @@
              else ('No active session' if (tso_cancel_text | default('') is search('NOT FOUND|NOT ACTIVE|NOT LOGGED|NO SUCH'))
              else ('Rejected' if (tso_cancel_text | default('') is search('REJECTED|INVALID'))
              else ('Failed' if cancel_result is failed
-             else 'Success'))) }}
+             else ('Success' if (tso_cancel_response | default('') | trim | length) > 0
+             else 'Success (unconfirmed)')))) }}
         tso_cancel_detail: >-
           {{ ('Host not reachable: ' ~ (conn_check.msg | default('timeout')))
              if (not (zos_conn_ok | bool))
