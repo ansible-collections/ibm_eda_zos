@@ -134,6 +134,9 @@
     # apart from an admin deny.
     ###########################################################################
 
+    # aggregate: false on every set_stats in this job. By default set_stats adds
+    # values with the same name together, which joins text ("USRT004USRT004")
+    # when it is called more than once. Later calls must replace earlier ones.
     - name: Publish alert context and mark investigation as not completed
       ansible.builtin.set_stats:
         data:
@@ -143,6 +146,7 @@
           alert_command: "{{ alert_message }}"
           hostname: "{{ hostname }}"
         per_host: false
+        aggregate: false
 
     ###########################################################################
     # Safety check: target_user comes from an event and is placed into z/OS
@@ -535,6 +539,7 @@
           target_user: "{{ target_user }}"
           hostname: "{{ hostname }}"
         per_host: false
+        aggregate: false
 
     ###########################################################################
     # Post Slack notification to admin with RACF profile + ZLDA UAUDIT history
@@ -582,3 +587,4 @@
         data:
           investigate_status: completed
         per_host: false
+        aggregate: false
