@@ -62,6 +62,9 @@
 #   - zlda_summary_recent : same table limited to the last 10 records (used in the email)
 #   - zlda_status      : ok | unavailable (ZLDA could not be read; see zlda_reason)
 #   - zlda_reason      : why the ZLDA query was unavailable (empty when ok)
+#   - investigate_status : failed | completed. Set to "failed" first and to
+#                        "completed" as the last task, so Notify can report an
+#                        investigation that did not finish.
 #   - alert_command    : the SPECIAL command that triggered the alert
 #   - alert_code       : C2P1109I
 ################################################################################
@@ -112,6 +115,9 @@
     zlda_verify_tls: "{{ zlda_kafka_verify_tls | default(true) | bool }}"
     zlda_verify_hostname: "{{ zlda_kafka_verify_hostname | default(true) | bool }}"
 
+    # Upper limit in seconds for reading the ZLDA stream (extra variable)
+    zlda_max_read_s: "{{ zlda_kafka_max_read_s | default(30) | int }}"
+
     # Build the AAP workflow visualizer URL using awx_workflow_job_id
     workflow_url: >-
       {{ 'https://' ~ aap_host ~ '/execution/jobs/workflow/' ~ awx_workflow_job_id
@@ -120,6 +126,23 @@
          else 'N/A - set aap_controller_host in job template extra vars' }}
 
   tasks:
+
+    ###########################################################################
+    # Published first so a failure in any later step still gives Notify the
+    # alert context. investigate_status stays "failed" until the last task of
+    # this job sets it to "completed", so Notify can tell a failed investigation
+    # apart from an admin deny.
+    ###########################################################################
+
+    - name: Publish alert context and mark investigation as not completed
+      ansible.builtin.set_stats:
+        data:
+          investigate_status: failed
+          target_user: "{{ target_user }}"
+          alert_code: "{{ alert_code }}"
+          alert_command: "{{ alert_message }}"
+          hostname: "{{ hostname }}"
+        per_host: false
 
     ###########################################################################
     # Safety check: target_user comes from an event and is placed into z/OS
@@ -206,7 +229,9 @@
         lu_user_id: "{{ base['USER'] | default('UNKNOWN', true) }}"
         lu_owner: "{{ base['OWNER'] | default('UNKNOWN', true) }}"
         lu_default_group: "{{ base['DEFAULT-GROUP'] | default('UNKNOWN', true) }}"
-        lu_attributes: "{{ ([base['ATTRIBUTES'] | default([], true)] | flatten | join(' ')) or 'NONE' }}"
+        lu_attributes: >-
+          {{ 'UNKNOWN' if 'ATTRIBUTES' not in base
+             else (([base['ATTRIBUTES'] | default([], true)] | flatten | join(' ')) or 'NONE') }}
         lu_last_access: "{{ base['LAST-ACCESS'] | default('UNKNOWN', true) }}"
       vars:
         base: "{{ listuser_output.segments.base_segment }}"
@@ -295,7 +320,6 @@
                 bootstrap_servers=[broker],
                 api_version=(3, 4, 1),
                 enable_auto_commit=False,
-                consumer_timeout_ms=5000,
                 value_deserializer=lambda x: x.decode('utf-8', errors='replace'),
                 **ssl_kwargs
             )
@@ -325,31 +349,52 @@
         alert_msg = base64.b64decode('{{ alert_message | b64encode }}').decode('utf-8', 'replace').upper()
         records = []
 
-        try:
-            for msg in consumer:
-                try:
-                    rec = json.loads(msg.value)
-                except Exception:
-                    continue
+        def handle(msg):
+            try:
+                rec = json.loads(msg.value)
+            except Exception:
+                return
 
-                user = (rec.get('USER_ID') or rec.get('USER') or rec.get('USERID') or '').strip().upper()
-                resource = str(rec.get('RESOURCE_NAME', '')).strip()
-                # Keep commands ISSUED BY the target user AND commands issued AGAINST the
-                # target user (e.g. ALTUSER <target> by another admin). [1109-UAUDIT-V2]
-                if user == target or resource.upper() == target:
-                    records.append({
-                        'timestamp':       str(rec.get('TIMESTAMP', '')).strip(),
-                        'by':              user,
-                        'command':         str(rec.get('COMMAND', '')).strip(),
-                        'resource':        resource,
-                        'special':         str(rec.get('SPECIAL', 'N')).strip(),
-                        'auditor':         str(rec.get('AUDITOR', 'N')).strip(),
-                        'failed':          str(rec.get('FAILED', 'N')).strip(),
-                        'terminal':        str(rec.get('TERMINAL_ID', '')).strip(),
-                        'authority_flags': str(rec.get('AUTHORITY_FLAGS', '')).strip(),
-                        'event_desc':      str(rec.get('EVENT_DESC', '')).strip(),
-                        'trigger':         False,
-                    })
+            user = (rec.get('USER_ID') or rec.get('USER') or rec.get('USERID') or '').strip().upper()
+            resource = str(rec.get('RESOURCE_NAME', '')).strip()
+            # Keep commands ISSUED BY the target user AND commands issued AGAINST the
+            # target user (e.g. ALTUSER <target> by another admin). [1109-UAUDIT-V2]
+            if user == target or resource.upper() == target:
+                records.append({
+                    'timestamp':       str(rec.get('TIMESTAMP', '')).strip(),
+                    'by':              user,
+                    'command':         str(rec.get('COMMAND', '')).strip(),
+                    'resource':        resource,
+                    'special':         str(rec.get('SPECIAL', 'N')).strip(),
+                    'auditor':         str(rec.get('AUDITOR', 'N')).strip(),
+                    'failed':          str(rec.get('FAILED', 'N')).strip(),
+                    'terminal':        str(rec.get('TERMINAL_ID', '')).strip(),
+                    'authority_flags': str(rec.get('AUTHORITY_FLAGS', '')).strip(),
+                    'event_desc':      str(rec.get('EVENT_DESC', '')).strip(),
+                    'trigger':         False,
+                })
+
+        # Read until no new message has arrived for idle_s seconds, or until
+        # max_read_s seconds have passed in total, whichever comes first. The
+        # total limit stops a busy topic from keeping this job running.
+        import time
+        max_read_s = {{ zlda_max_read_s }}
+        idle_s = 5
+        started = time.time()
+        last_msg = started
+        try:
+            while True:
+                now = time.time()
+                if now - started >= max_read_s:
+                    sys.stderr.write("ZLDA warning: read time limit of %s s reached, history may be incomplete\n" % max_read_s)
+                    break
+                if now - last_msg >= idle_s:
+                    break
+                batch = consumer.poll(timeout_ms=1000)
+                for tp_msgs in batch.values():
+                    for msg in tp_msgs:
+                        last_msg = time.time()
+                        handle(msg)
         except Exception as e:
             bail(f"error while reading topic {topic}: {e}")
 
@@ -495,6 +540,19 @@
     # Post Slack notification to admin with RACF profile + ZLDA UAUDIT history
     ###########################################################################
 
+    # The command, host and UAUDIT table contain text typed by the flagged user
+    # or taken from the event. Slack treats & < > as markup and a backtick can
+    # close the code block, so they are neutralised before the message is built.
+    - name: Escape event text for Slack
+      ansible.builtin.set_fact:
+        slack_hostname: >-
+          {{ hostname | replace('&', '&amp;') | replace('<', '&lt;') | replace('>', '&gt;') | replace('`', "'") }}
+        slack_command: >-
+          {{ alert_message | regex_replace('(?s)^.*issued SPECIAL command[ \n]*', '') | trim
+             | replace('&', '&amp;') | replace('<', '&lt;') | replace('>', '&gt;') | replace('`', "'") }}
+        slack_table: >-
+          {{ zlda_slack_table | replace('&', '&amp;') | replace('<', '&lt;') | replace('>', '&gt;') | replace('`', "'") }}
+
     - name: Post Slack alert notification to admin
       community.general.slack:
         token: "{{ slack_token }}"
@@ -502,12 +560,12 @@
         msg: |
           :rotating_light: *zSecure Alert 1109 — SPECIAL authority used by non-SPECIAL user*
           *User:* `{{ target_user }}`
-          *Host:* `{{ hostname }}`
-          *Command:* `{{ alert_message | regex_replace('(?s)^.*issued SPECIAL command[ \n]*', '') | trim }}`
+          *Host:* `{{ slack_hostname }}`
+          *Command:* `{{ slack_command }}`
 
           *Recent activity — {{ (zlda_records | length ~ ' record(s)') if zlda_status == 'ok' else 'unavailable' }}*
           ```
-          {{ zlda_slack_table }}
+          {{ slack_table }}
           ```
           *Decision needed*
           :white_check_mark: *Approve* — Cancel user session and revoke
@@ -516,3 +574,11 @@
       delegate_to: localhost
       ignore_errors: true
       when: slack_token is defined and slack_token not in ('', None, 'None')
+
+    # Last step. If this job fails before it, investigate_status stays "failed"
+    # (set at the start) and Notify reports a failed investigation.
+    - name: Mark investigation as completed
+      ansible.builtin.set_stats:
+        data:
+          investigate_status: completed
+        per_host: false

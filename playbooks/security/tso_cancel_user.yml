@@ -135,7 +135,11 @@
         tso_cancel_detail: >-
           {{ ('Host not reachable: ' ~ (conn_check.msg | default('timeout')))
              if (not (zos_conn_ok | bool))
-             else ((cancel_result.msg | default(tso_cancel_text | default(''))) | string | trim | truncate(300)) }}
+             else ('The operator command returned no response text, so the session end is not confirmed. Check on z/OS.'
+                   if ((tso_cancel_response | default('') | trim | length) == 0
+                       and (cancel_result.msg | default('') | trim | length) == 0
+                       and cancel_result is not failed)
+                   else ((cancel_result.msg | default(tso_cancel_text | default(''))) | string | trim | truncate(300))) }}
 
     - name: Log TSO session termination result
       ansible.builtin.debug:

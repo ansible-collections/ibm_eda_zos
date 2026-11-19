@@ -2,28 +2,44 @@
 {% set approved = (decision | default('denied')) == 'approved' %}
 {% set ok_tso = ['Success', 'No active session'] %}
 {% set show_listuser_output = false %}
+{# The shared LISTUSER section does not escape its values. Workflow artifacts
+   arrive as extra vars, which set_fact cannot override, so they are escaped
+   here by shadowing them before the include. #}
+{% set lu_user_id = (lu_user_id | default(target_user | default('UNKNOWN'), true)) | e %}
+{% set lu_owner = (lu_owner | default('UNKNOWN', true)) | e %}
+{% set lu_default_group = (lu_default_group | default('UNKNOWN', true)) | e %}
+{% set lu_attributes = (lu_attributes | default('UNKNOWN', true)) | e %}
+{% set lu_joined = (lu_joined | default('LISTUSER command failed or user not found', true)) | e %}
 <h3>zSecure Alert 1109 — SPECIAL Authority Used by Non-SPECIAL User</h3>
 
 <div class="alert-box">
   <p>
-    <b>Alert Code:</b> {{ alert_code | default('C2P1109I') }}<br/>
-    <b>User ID:</b> {{ target_user }}<br/>
-    <b>Hostname:</b> {{ hostname }}
+    <b>Alert Code:</b> {{ alert_code | default('C2P1109I') | e }}<br/>
+    <b>User ID:</b> {{ target_user | e }}<br/>
+    <b>Hostname:</b> {{ hostname | e }}
   </p>
 </div>
 
 <h4>What Happened</h4>
 <div class="warning-box">
-  <p><b>Triggering command:</b> <code>{{ alert_command | default('N/A', true) }}</code></p>
+  <p><b>Triggering command:</b> <code>{{ alert_command | default('N/A', true) | e }}</code></p>
   <p>
-    User <b>{{ target_user }}</b> executed a SPECIAL-level RACF command, but their
+    User <b>{{ target_user | e }}</b> executed a SPECIAL-level RACF command, but their
     RACF profile does not carry the SPECIAL attribute. This means the user carried
     SPECIAL authority from a previous session (before it was removed from their profile)
     and used it — a privilege escalation gap that zSecure is designed to detect.
   </p>
 </div>
 
-{% if not approved %}
+{% if overall_status | default('') == 'INVESTIGATION_FAILED' %}
+<h4>Investigation Failed — No Admin Decision</h4>
+<div class="alert-box">
+  <p>
+    The Investigate job did not finish, so the admin may not have received an approval request.<br/>
+    <b>No action has been taken against the user.</b> Review the alert manually and check the AAP workflow run.
+  </p>
+</div>
+{% elif not approved %}
 <h4>Admin Decision: Quarantine Denied</h4>
 <div class="info-box">
   <p>
@@ -47,16 +63,17 @@
 <table>
   <tr><th>#</th><th>Step</th><th>Command</th><th>Result</th><th>Detail</th></tr>
   <tr>
-    <td>1</td><td>End TSO session</td><td><code>C U={{ target_user }}</code></td>
-    <td><b>{{ s_tso }}</b></td><td>{{ tso_cancel_detail | default('') if s_tso not in ok_tso else '' }}</td>
+    <td>1</td><td>End TSO session</td><td><code>C U={{ target_user | e }}</code></td>
+    <td><b>{{ s_tso | e }}</b></td><td>{{ (tso_cancel_detail | default('') | e) if s_tso not in ok_tso else '' }}</td>
   </tr>
   <tr>
-    <td>2</td><td>Revoke access</td><td><code>ALTUSER {{ target_user }} REVOKE</code></td>
-    <td><b>{{ s_revoke }}</b></td><td>{{ racf_revoke_detail | default('') if s_revoke != 'Success' else '' }}</td>
+    <td>2</td><td>Revoke access</td><td><code>ALTUSER {{ target_user | e }} REVOKE</code></td>
+    <td><b>{{ s_revoke | e }}</b></td><td>{{ (racf_revoke_detail | default('') | e) if s_revoke != 'Success' else '' }}</td>
   </tr>
   <tr>
-    <td>3</td><td>Verification (LISTUSER)</td><td><code>LISTUSER {{ target_user }}</code></td>
-    <td><b>{{ s_verify }}</b></td><td></td>
+    <td>3</td><td>Verification (LISTUSER)</td><td><code>LISTUSER {{ target_user | e }}</code></td>
+    <td><b>{{ s_verify | e }}</b></td>
+    <td>{% if s_verify == 'Not verified' %}<b>REVOKED was not found in the profile after the revoke. Check LISTUSER on z/OS.</b>{% elif s_verify == 'Unavailable' %}The profile could not be read after the revoke. Check LISTUSER on z/OS.{% endif %}</td>
   </tr>
 </table>
 
@@ -65,8 +82,8 @@
 <div class="warning-box">
   <p>Run the following on z/OS for the steps that did not succeed:</p>
   <ul>
-    {% if s_tso not in ok_tso %}<li><code>C U={{ target_user }}</code> — end the active TSO session</li>{% endif %}
-    {% if s_revoke != 'Success' %}<li><code>ALTUSER {{ target_user }} REVOKE</code> — revoke the account</li>{% endif %}
+    {% if s_tso not in ok_tso %}<li><code>C U={{ target_user | e }}</code> — end the active TSO session</li>{% endif %}
+    {% if s_revoke != 'Success' %}<li><code>ALTUSER {{ target_user | e }} REVOKE</code> — revoke the account</li>{% endif %}
   </ul>
   <p>
     "Unreachable" means the z/OS host could not be contacted from AAP; check connectivity first.
@@ -79,7 +96,7 @@
 {% set uaudit_table = zlda_summary_recent | default(zlda_summary | default(''), true) %}
 {% if uaudit_table | trim != '' %}
 <h4>Recent UAUDIT Activity (ZLDA)</h4>
-<pre>{{ uaudit_table }}</pre>
+<pre>{{ uaudit_table | e }}</pre>
 {% endif %}
 
 {% include 'racf_listuser_section.html.j2' %}
@@ -87,12 +104,12 @@
 <h4>{{ 'Suggested Investigation Steps' if not approved else 'Suggested Follow-up' }}</h4>
 <div class="info-box">
   <ol>
-    <li>Check when SPECIAL was granted to <b>{{ target_user }}</b> and by whom (RACF audit log, SMF type 80).</li>
+    <li>Check when SPECIAL was granted to <b>{{ target_user | e }}</b> and by whom (RACF audit log, SMF type 80).</li>
     <li>Review all commands run in the session where the alert fired.</li>
     <li>Determine if any datasets or resources were created or modified using SPECIAL authority.</li>
     <li>Confirm whether the privilege use was intentional or accidental.</li>
     {% if approved %}
-    <li>Decide when to restore access (<code>ALTUSER {{ target_user }} RESUME</code>) after the investigation.</li>
+    <li>Decide when to restore access (<code>ALTUSER {{ target_user | e }} RESUME</code>) after the investigation.</li>
     {% else %}
     <li>Take appropriate action: REVOKE the user if malicious, or educate if accidental.</li>
     {% endif %}
@@ -103,7 +120,9 @@
 <p style="font-size: 0.9em; color: #666;">
   <i>
     Automated message from Event-Driven Ansible monitoring zSecure C2P1109I events.
-    {% if approved %}
+    {% if overall_status | default('') == 'INVESTIGATION_FAILED' %}
+    The investigation did not finish. No decision was made and no RACF changes have been made.
+    {% elif approved %}
     Remediation was approved by an admin; results are listed above.
     {% else %}
     Admin denied quarantine. No RACF changes have been made.

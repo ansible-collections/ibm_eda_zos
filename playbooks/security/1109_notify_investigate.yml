@@ -92,6 +92,10 @@
         lu_default_group: "{{ lu_default_group | default('UNKNOWN', true) }}"
         lu_attributes: "{{ lu_attributes | default('UNKNOWN', true) }}"
         lu_joined: "{{ lu_joined | default('LISTUSER command failed or user not found', true) }}"
+        # investigate_status is "failed" until the last task of the Investigate
+        # job. If it is still "failed" here, no admin ever saw the alert, so this
+        # must not be reported as a deny.
+        investigation_failed: "{{ (investigate_status | default('completed')) != 'completed' }}"
         decision: >-
           {{ admin_decision | default(
                'approved' if (racf_revoke_status is defined or tso_cancel_status is defined) else 'denied', true) | lower }}
@@ -102,10 +106,13 @@
         s_revoke: "{{ racf_revoke_status | default('Not run') }}"
         s_verify: "{{ racf_verify_status | default('Unavailable') }}"
 
+    # An approval decision always wins: if the admin approved, the steps ran even
+    # when the Investigate job did not reach its last task.
     - name: Compute overall status
       ansible.builtin.set_fact:
         overall_status: >-
-          {% if decision != 'approved' %}DENIED
+          {% if decision != 'approved' and (investigation_failed | bool) %}INVESTIGATION_FAILED
+          {%- elif decision != 'approved' %}DENIED
           {%- elif s_tso in ok_tso_states and s_revoke == 'Success' %}SUCCESS
           {%- elif s_tso not in ok_tso_states and s_revoke != 'Success' %}FAILED
           {%- else %}PARTIAL{% endif %}
@@ -119,7 +126,7 @@
           - "REVOKE      : {{ s_revoke }}"
 
     ###########################################################################
-    # Email (same template for approved and denied)
+    # Email (same template for approved, denied and failed investigation)
     ###########################################################################
 
     - name: Build HTML email body
@@ -140,7 +147,9 @@
     - name: Build email subject
       ansible.builtin.set_fact:
         email_subject: >-
-          {% if overall_status == 'DENIED' -%}
+          {% if overall_status == 'INVESTIGATION_FAILED' -%}
+          [ACTION REQUIRED] zSecure Alert {{ alert_code }} - investigation failed for {{ target_user }} on {{ hostname }}
+          {%- elif overall_status == 'DENIED' -%}
           [NOTIFICATION] zSecure Alert {{ alert_code }} - quarantine denied for {{ target_user }} on {{ hostname }}
           {%- elif overall_status == 'SUCCESS' -%}
           [INFO] zSecure Alert {{ alert_code }} - {{ target_user }} contained on {{ hostname }}
@@ -173,15 +182,39 @@
     # The deny message can be switched off with slack_notify_on_deny=false.
     ###########################################################################
 
+    # Values from the event can contain text typed by the flagged user, so
+    # & < > and backticks are neutralised before they go into the message.
+    - name: Escape event text for Slack
+      ansible.builtin.set_fact:
+        slack_target_user: >-
+          {{ target_user | replace('&', '&amp;') | replace('<', '&lt;') | replace('>', '&gt;') | replace('`', "'") }}
+        slack_hostname: >-
+          {{ hostname | replace('&', '&amp;') | replace('<', '&lt;') | replace('>', '&gt;') | replace('`', "'") }}
+        slack_tso_detail: >-
+          {{ tso_cancel_detail | default('') | truncate(120)
+             | replace('&', '&amp;') | replace('<', '&lt;') | replace('>', '&gt;') | replace('`', "'") }}
+        slack_revoke_detail: >-
+          {{ racf_revoke_detail | default('') | truncate(120)
+             | replace('&', '&amp;') | replace('<', '&lt;') | replace('>', '&gt;') | replace('`', "'") }}
+
     - name: Post outcome to Slack
       community.general.slack:
         token: "{{ slack_token }}"
         parse: none
         msg: |
-          {% if overall_status == 'DENIED' %}
+          {% if overall_status == 'INVESTIGATION_FAILED' %}
+          :rotating_light: *INVESTIGATION FAILED — Alert 1109* — no admin decision was made, *check manually*
+          *User:* `{{ slack_target_user }}`
+          *Host:* `{{ slack_hostname }}`
+
+          :warning: The Investigate job did not finish, so no approval request may have been sent. No action was taken on the user.
+          {{ ':white_check_mark:' if email_status == 'Sent' else (':information_source:' if email_status.startswith('Skipped') else ':x:') }} *Security team emailed* → `{{ email_status }}`
+
+          :arrow_right: <{{ workflow_url }}|View workflow run>
+          {% elif overall_status == 'DENIED' %}
           :no_entry_sign: *QUARANTINE DENIED — Alert 1109* (admin denied)
-          *User:* `{{ target_user }}`
-          *Host:* `{{ hostname }}`
+          *User:* `{{ slack_target_user }}`
+          *Host:* `{{ slack_hostname }}`
 
           *Result*
           :information_source: *No action taken* — user was not changed
@@ -194,12 +227,12 @@
           {% else %}
           :rotating_light: *REMEDIATION {{ overall_status }} — Alert 1109* (admin approved) — *manual action needed*
           {% endif %}
-          *User:* `{{ target_user }}`
-          *Host:* `{{ hostname }}`
+          *User:* `{{ slack_target_user }}`
+          *Host:* `{{ slack_hostname }}`
 
           *Steps performed*
-          {{ icon_by_status.get(s_tso, ':x:') }} *1. End TSO session* → `{{ s_tso }}`{{ ' — ' ~ (tso_cancel_detail | default('') | truncate(120)) if (s_tso not in ok_tso_states and tso_cancel_detail is defined) else '' }}
-          {{ icon_by_status.get(s_revoke, ':x:') }} *2. Revoke account* → `{{ s_revoke }}`{{ ' — ' ~ (racf_revoke_detail | default('') | truncate(120)) if (s_revoke != 'Success' and racf_revoke_detail is defined) else '' }}
+          {{ icon_by_status.get(s_tso, ':x:') }} *1. End TSO session* → `{{ s_tso }}`{{ ' — ' ~ slack_tso_detail if (s_tso not in ok_tso_states and tso_cancel_detail is defined) else '' }}
+          {{ icon_by_status.get(s_revoke, ':x:') }} *2. Revoke account* → `{{ s_revoke }}`{{ ' — ' ~ slack_revoke_detail if (s_revoke != 'Success' and racf_revoke_detail is defined) else '' }}
           {{ ':white_check_mark:' if email_status == 'Sent' else (':information_source:' if email_status.startswith('Skipped') else ':x:') }} *3. Security team emailed* → `{{ email_status }}`
           {% if overall_status != 'SUCCESS' %}
 
@@ -236,4 +269,4 @@
           Alert 1109 outcome for {{ target_user }}: {{ overall_status }}
           (end session: {{ s_tso }}, REVOKE: {{ s_revoke }},
           email: {{ email_status }}). Manual follow-up required.
-      when: overall_status in ['PARTIAL', 'FAILED'] or email_status == 'Failed'
+      when: overall_status in ['PARTIAL', 'FAILED', 'INVESTIGATION_FAILED'] or email_status == 'Failed'
