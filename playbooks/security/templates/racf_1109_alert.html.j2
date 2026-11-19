@@ -25,9 +25,10 @@
   <p><b>Triggering command:</b> <code>{{ alert_command | default('N/A', true) | e }}</code></p>
   <p>
     User <b>{{ target_user | e }}</b> executed a SPECIAL-level RACF command, but their
-    RACF profile does not carry the SPECIAL attribute. This means the user carried
-    SPECIAL authority from a previous session (before it was removed from their profile)
-    and used it — a privilege escalation gap that zSecure is designed to detect.
+    RACF profile does not carry the SPECIAL attribute. The likely explanation is that
+    the user still held SPECIAL authority from an earlier session (from before it was
+    removed from their profile) and used it — a privilege escalation gap that zSecure
+    is designed to detect. This is not confirmed, so review the activity below.
   </p>
 </div>
 
@@ -100,6 +101,10 @@
 {% endif %}
 
 {% include 'racf_listuser_section.html.j2' %}
+<p style="font-size: 0.9em; color: #666;">
+  <i>The profile above was read when the alert was investigated, before any remediation.
+  {% if approved %}The Verification row above confirms the result after the revoke.{% endif %}</i>
+</p>
 
 <h4>{{ 'Suggested Investigation Steps' if not approved else 'Suggested Follow-up' }}</h4>
 <div class="info-box">
