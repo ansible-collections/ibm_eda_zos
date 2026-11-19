@@ -37,6 +37,8 @@
 #   - This playbook never aborts the workflow. The caller decides what a
 #     non-success status means.
 #
+# Requires the `ibm.ibm_zos_core` collection, version 2.1.0 or later.
+#
 # Caller must supply:
 #   target_user : TSO userid whose session to cancel
 # Optional:
@@ -44,8 +46,8 @@
 #
 # Artifacts published with set_stats (passed on to the next workflow job):
 #   admin_decision    : approved (published first, survives a later failure)
-#   tso_cancel_status : Success | No active session | Rejected | Failed |
-#                       Unreachable
+#   tso_cancel_status : Success | Success (unconfirmed) | No active session |
+#                       Rejected | Failed | Unreachable
 #   tso_cancel_detail : short text from the module / console (max 300 chars)
 # The same two tso_cancel_* values are also set as facts on localhost for
 # callers that use import_playbook.
@@ -110,14 +112,11 @@
       ignore_unreachable: true
       when: zos_conn_ok | bool
 
-    # ibm_zos_core 1.x returns the operator response in content; 2.x returns it
-    # in stdout_lines. Read whichever exists.
     - name: Classify session termination result
       ansible.builtin.set_fact:
-        tso_cancel_response: >-
-          {{ (cancel_result.stdout_lines | default(cancel_result.content, true) | default([], true)) | join(' ') }}
+        tso_cancel_response: "{{ cancel_result.stdout_lines | default([], true) | join(' ') }}"
         tso_cancel_text: >-
-          {{ (((cancel_result.stdout_lines | default(cancel_result.content, true) | default([], true)) | join(' '))
+          {{ ((cancel_result.stdout_lines | default([], true) | join(' '))
               ~ ' ' ~ (cancel_result.msg | default(''))) | upper }}
       when: zos_conn_ok | bool
 

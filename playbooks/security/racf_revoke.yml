@@ -30,6 +30,9 @@
 #   - This playbook never aborts the workflow. The caller decides what a
 #     non-success status means.
 #
+# Requires the `ibm.ibm_zos_core` collection, version 2.1.0 or later
+# (zos_user_info is not available in earlier versions).
+#
 # Caller must supply:
 #   target_user        : RACF userid to revoke
 #   system_environment : z/OS environment vars for zos_tso_command
@@ -43,8 +46,8 @@
 # The same racf_* values are also set as facts on localhost for callers that
 # use import_playbook.
 #
-# NOTE: verification looks for "REVOKED" in the ATTRIBUTES line of LISTUSER;
-# confirm this matches real output on your system.
+# NOTE: verification looks for "REVOKED" in the ATTRIBUTES list returned by
+# zos_user_info.
 ################################################################################
 
 ---
@@ -100,8 +103,6 @@
       ignore_unreachable: true
       when: zos_conn_ok | bool
 
-    # ibm_zos_core 1.x returns the command text in output[0].content; 2.x
-    # returns it in output[0].stdout_lines. Read whichever exists.
     - name: Set REVOKE status and detail
       ansible.builtin.set_fact:
         racf_revoke_status: >-
@@ -111,8 +112,7 @@
           {{ ('Host not reachable: ' ~ (conn_check.msg | default('timeout')))
              if (not (zos_conn_ok | bool))
              else (((revoke_result.msg | default('')) ~ ' '
-                    ~ ((revoke_result.output[0].stdout_lines | default(revoke_result.output[0].content, true)
-                        | default([], true)) | join(' '))
+                    ~ (revoke_result.output[0].stdout_lines | default([], true) | join(' '))
                     if (revoke_result.output is defined and revoke_result.output | length > 0) else '')
                    | trim | truncate(300)) }}
 

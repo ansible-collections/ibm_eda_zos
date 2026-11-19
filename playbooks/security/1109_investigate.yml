@@ -228,9 +228,9 @@
     #   USER_ID, COMMAND, RESOURCE_NAME, SPECIAL, FAILED, TERMINAL_ID,
     #   EVENT_DESC, TIMESTAMP — confirmed flowing from EC03226A on 2026-10-23.
     #
-    # The script polls the topic for zlda_poll_timeout_ms milliseconds and
-    # collects all records matching the target user. This captures commands
-    # issued in the window around the alert trigger.
+    # The script reads the most recent records on the topic and collects all
+    # records matching the target user. This captures commands issued in the
+    # window around the alert trigger.
     ###########################################################################
 
     - name: Query ZLDA Kafka stream for recent UAUDIT command history
