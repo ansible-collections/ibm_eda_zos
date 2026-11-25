@@ -8,6 +8,12 @@
 Collection releases
 ===================
 
+Version 1.2.0
+--------------
+Release 1.2.0 of the `ibm.ibm_eda_zos` collection.
+
+
+
 Version 1.1.0
 --------------
 

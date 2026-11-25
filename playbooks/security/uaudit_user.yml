@@ -1,0 +1,100 @@
+################################################################################
+# Copyright (c) IBM Corporation 2026
+################################################################################
+
+################################################################################
+# This playbook sets the UAUDIT attribute for a TSO user in RACF by issuing the
+# `ALTUSER <user> UAUDIT` command when a valid target user is provided from an
+# Event-Driven Ansible alert.
+#
+# The playbook reads the target user and alert text from an incoming Ansible
+# EDA event, using `ansible_eda.event.body.action_user` and
+# `ansible_eda.event.body.alert_message`.
+#
+# If the target user is missing or resolves to `UNKNOWN`, the playbook does not
+# issue any RACF command. Instead, it logs a message and records a status value
+# for downstream notification processing.
+#
+# If a valid target user is present, the playbook:
+# - issues the RACF command `ALTUSER <user> UAUDIT`
+# - retrieves the updated user attributes with the
+#   `ibm.ibm_zos_core.zos_user_info` module
+# - displays selected command output for troubleshooting
+# - records the command result using `set_stats` for later workflow steps such
+#   as email notification
+#
+# Required configuration:
+# - `system_environment` must provide the environment needed to run z/OS tasks.
+# - The target host must be reachable and capable of running
+#   `ibm.ibm_zos_core.zos_tso_command` and `ibm.ibm_zos_core.zos_user_info`.
+# - The `ibm.ibm_zos_core` collection must be installed and available.
+# - The executing identity must have sufficient RACF authority to run
+#   `ALTUSER` and query user profile information.
+# - The incoming event should provide `ansible_eda.event.body.action_user` for
+#   setting the UAUDIT attribute.
+################################################################################
+
+---
+- name: Set the UAUDIT attribute for a TSO user
+  hosts: "{{ target_hosts | default('localhost') }}"
+  gather_facts: false
+  environment: "{{ system_environment }}"
+
+  vars:
+    tso_user: "{{ ansible_eda.event.body.action_user | default('UNKNOWN', true) }}"
+    alert_message: "{{ ansible_eda.event.body.alert_message | default('No Message Text', true) }}"
+
+  tasks:
+    - name: Show the alert event message
+      ansible.builtin.debug:
+        msg: "alert_message: {{ alert_message }}"
+
+    - name: Action when tso_user is UNKNOWN
+      when: tso_user == "UNKNOWN"
+      block:
+        - name: Display message that tso_user is UNKNOWN
+          ansible.builtin.debug:
+            msg: "Cannot proceed: tso_user was 'UNKNOWN'."
+
+        - name: Set command message for email notice
+          ansible.builtin.set_stats:
+            data:
+              set_command_message: "cannot proceed: tso_user was 'UNKNOWN'"
+            per_host: false
+
+    - name: Action to set the UAUDIT attribute for a valid TSO user
+      when: tso_user != "UNKNOWN"
+      block:
+        # Submit command to set the UAUDIT attribute for the user
+        - name: Issue RACF command to set the UAUDIT attribute for the user
+          ibm.ibm_zos_core.zos_tso_command:
+            commands:
+              - ALTUSER {{ tso_user }} UAUDIT
+            max_rc: 4
+          register: altuser_result
+          ignore_errors: true
+
+        # Retrieve the user's profile information
+        - name: Get user profile information
+          ibm.ibm_zos_core.zos_user_info:
+            name: "{{ tso_user }}"
+            profile_type: user
+          register: tso_output_after
+
+        - name: Display the user's RACF base segment attributes after setting the UAUDIT attribute
+          ansible.builtin.debug:
+            msg: >-
+              {{ tso_user }} RACF base segment attributes after setting the UAUDIT attribute:
+              {{ tso_output_after.segments.base_segment.ATTRIBUTES }}
+
+        - name: Set command message for email notice
+          ansible.builtin.set_stats:
+            data:
+              set_command_message: "executed the ALTUSER {{ tso_user }} UAUDIT command \
+                {{ 'successfully' if altuser_result.output[0].rc <= 4 else 'but failed' }}"
+            per_host: false
+
+        # Display the status message for the ALTUSER command
+        - name: Display status message for ALTUSER command
+          ansible.builtin.debug:
+            msg: "ALTUSER {{ tso_user }} UAUDIT command {{ 'was successful' if altuser_result.output[0].rc <= 4 else 'failed' }}"
