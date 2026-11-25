@@ -152,6 +152,7 @@ Response playbooks that can be triggered by rulebooks:
   Flood alert.
 - **`send_slack_message.yml`** - Send Slack notification to security
   administrators.
+- **`uaudit_useryml`** - Set the UAUDIT attribute for a RACF user.
 
 ### Email Templates
 
