@@ -1,0 +1,14 @@
+//{{ zsecure_carla_jobname | default('CKRSMF80', true) }} JOB MSGLEVEL=(1,1),CLASS={{ zsecure_job_class | default('A', true) }},PRTY=15,MSGCLASS={{ zsecure_job_msgclass | default('H', true) }}
+/*JOBPARM SYSAFF=*
+//ZSECURE  EXEC PGM=CKRCARLA,REGION=128M
+//STEPLIB  DD DISP=SHR,DSN={{ zsecure_sckrload | trim }}
+//SYSPRINT DD SYSOUT=*
+{% if (zsecure_racf_db | default('', true) | trim) != '' %}
+//RACFDB   DD DISP=SHR,DSN={{ zsecure_racf_db | trim }}
+{% endif %}
+//SYSIN    DD *
+{% for line in carla_sysin %}
+  {{ line }}
+{% endfor %}
+/*
+//

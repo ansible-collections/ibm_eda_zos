@@ -1,0 +1,69 @@
+{% include 'racf_alert_base.html.j2' %}
+{% set show_listuser_output = false %}
+{# The shared LISTUSER section does not escape its values, so they are escaped
+   here by shadowing them before the include. #}
+{% set lu_user_id = (lu_user_id | default(target_user | default('UNKNOWN'), true)) | e %}
+{% set lu_owner = (lu_owner | default('UNKNOWN', true)) | e %}
+{% set lu_default_group = (lu_default_group | default('UNKNOWN', true)) | e %}
+{% set lu_attributes = (lu_attributes | default('UNKNOWN', true)) | e %}
+{% set lu_joined = (lu_joined | default('LISTUSER command failed or user not found', true)) | e %}
+{% set trigger_command = (alert_message | default(alert_command | default('N/A', true), true) | string) | trim %}
+<h3>zSecure Alert 1109 — Approval Needed</h3>
+
+<div class="alert-box">
+  <p>
+    <b>Alert Code:</b> {{ alert_code | default('C2P1109I') | e }}<br/>
+    <b>User ID:</b> {{ target_user | e }}<br/>
+    <b>Hostname:</b> {{ hostname | e }}
+  </p>
+</div>
+
+<h4>What Happened</h4>
+<div class="warning-box">
+  <p><b>Triggering command:</b> <code>{{ trigger_command | e }}</code></p>
+  <p>
+    User <b>{{ target_user | e }}</b> executed a SPECIAL-level RACF command, but their
+    RACF profile does not carry the SPECIAL attribute. The likely explanation is that
+    the user still held SPECIAL authority from an earlier session (from before it was
+    removed from their profile) and used it. This is not confirmed, so review the
+    activity below before deciding.
+  </p>
+</div>
+
+<h4>Decision Needed</h4>
+<div class="info-box">
+  <p>Open the workflow in AAP and choose <b>Approve</b> or <b>Deny</b>.</p>
+  <ul>
+    <li><b>Approve</b> — end the user's active TSO session (<code>C U={{ target_user | e }}</code>) and revoke the account (<code>ALTUSER {{ target_user | e }} REVOKE</code>).</li>
+    <li><b>Deny</b> — take no action on the user; the security team is emailed to investigate further.</li>
+  </ul>
+  {% if workflow_url | default('N/A') is match('^https://') %}
+  <p><a href="{{ workflow_url | e }}">Open the workflow to approve or deny</a></p>
+  <p style="font-size: 0.9em; color: #666;">If the link does not open, copy this address: {{ workflow_url | e }}</p>
+  {% else %}
+  <p><b>The workflow link is not available</b> (set <code>aap_controller_host</code> in the job template extra variables). Open the "EDA - Alert 1109 Response Workflow" run in AAP.</p>
+  {% endif %}
+</div>
+
+{% set recent_table = zlda_summary_recent | default('', true) %}
+<h4>Recent RACF Command Activity (SMF type 80)</h4>
+{% if recent_table | trim != '' %}
+<pre>{{ recent_table | e }}</pre>
+<p style="font-size: 0.9em; color: #666;"><i>Note: only records in the currently active SMF data sets are shown.</i></p>
+{% else %}
+<div class="warning-box"><p>No command history is available.</p></div>
+{% endif %}
+
+{% include 'racf_listuser_section.html.j2' %}
+<p style="font-size: 0.9em; color: #666;">
+  <i>The profile above was read when the alert was investigated. No change has been made to the user.</i>
+</p>
+
+<hr/>
+<p style="font-size: 0.9em; color: #666;">
+  <i>Automated message from Event-Driven Ansible monitoring zSecure C2P1109I events.
+  Nothing happens to the user until an admin approves in AAP.</i>
+</p>
+
+</body>
+</html>
