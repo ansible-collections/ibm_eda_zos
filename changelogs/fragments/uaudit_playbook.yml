@@ -1,0 +1,2 @@
+minor_changes:
+  - Added *uaudit_user* playbook for setting UAUDIT attribute on a user
