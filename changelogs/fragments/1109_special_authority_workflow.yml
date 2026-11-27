@@ -1,0 +1,6 @@
+minor_changes:
+  - Added the *1109_special_authority* rulebook, which launches the "EDA - Alert 1109 Response Workflow" in AAP when zSecure alert C2P1109I (SPECIAL authority used by a non-SPECIAL user) is received.
+  - Added the *1109_investigate* playbook, which reads the user's RACF profile with zos_user_info, reads the user's recent SMF type 80 command history with a zSecure CARLa batch job submitted with zos_job_submit, and emails an approval request to the security team.
+  - Added the *tso_cancel_user* and *racf_revoke* playbooks, which end the user's TSO session and revoke the user after approval. *racf_revoke* checks the result with zos_user_info.
+  - Added the *1109_notify_investigate* playbook, which emails the outcome (success, partial, failed, denied or investigation failed) to the security team.
+  - Raised the minimum version of the ibm.ibm_zos_core collection in collections/requirements.yml from 1.13.1 to 2.1.0, because the 1109 playbooks use zos_user_info.

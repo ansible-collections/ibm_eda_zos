@@ -1,0 +1,155 @@
+################################################################################
+# Copyright (c) IBM Corporation 2026
+################################################################################
+
+################################################################################
+# Playbook: terminate active TSO user session
+#
+# Issues the z/OS operator command "C U=userid" to cancel an active TSO
+# session. Job template of the 1109 response workflow.
+#
+# Workflow position (zSecure Alert 1109), runs only after the admin APPROVES:
+#   1109 Investigate -> Approval --Approve--> End Session (this playbook)
+#                                                  | (always)
+#                                             Revoke Access (racf_revoke.yml)
+#                                                  | (always)
+#                                             Notify and Email
+#
+# Why it is needed: ALTUSER REVOKE blocks future logons but does not end an
+# active session. The security context (ACEE) built at logon persists until
+# logoff, so a revoked user can keep using SPECIAL until then. "C U=userid" ends
+# the TSO address space; "CANCEL userid" and "FORCE userid" do not reliably do so.
+#
+# Error handling:
+#   - Connectivity is verified first (wait_for_connection, default 60 s). If the
+#     host cannot be reached the command is NOT attempted and the status is
+#     "Unreachable".
+#   - ignore_unreachable keeps the host in the play if the connection drops
+#     mid-task, so the outcome can still be reported.
+#   - This playbook never aborts the workflow. The caller decides what a
+#     non-success status means.
+#
+# Requires the `ibm.ibm_zos_core` collection, version 2.1.0 or later.
+#
+# Caller must supply:
+#   target_user : TSO userid whose session to cancel
+# Optional:
+#   zos_connect_timeout_s : seconds to wait for connectivity (default 60)
+#
+# Artifacts published with set_stats (passed on to the next workflow job):
+#   admin_decision    : approved (published first, survives a later failure)
+#   tso_cancel_status : Success | Success (unconfirmed) | No active session |
+#                       Rejected | Failed | Unreachable
+#   tso_cancel_detail : short text from the module / console (max 300 chars)
+# The same two tso_cancel_* values are also set as facts on localhost.
+#
+# NOTE: the statuses are derived from the console text.
+################################################################################
+
+---
+- name: Record admin approval (published first so it survives a later failure)
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Publish admin decision
+      ansible.builtin.set_stats:
+        data:
+          admin_decision: approved
+        per_host: false
+
+- name: TSO remediation - terminate active user session
+  hosts: "{{ target_hosts | default('zos_target') }}"
+  gather_facts: false
+  environment: "{{ system_environment | default({}) }}"
+
+  tasks:
+
+    # target_user comes from an event and goes into a z/OS operator command, so
+    # it must be a valid RACF userid (1-8 characters: A-Z 0-9 # $ @) before
+    # anything runs.
+    - name: Validate target_user is a RACF userid
+      ansible.builtin.assert:
+        that:
+          - (target_user | string | upper) is match('^[A-Z0-9#$@]{1,8}$')
+          - (target_user | string | upper) not in ['NONE', 'UNKNOWN']
+        fail_msg: "Refusing to act on invalid or placeholder userid '{{ target_user }}'"
+        quiet: true
+
+
+    - name: Verify connectivity to z/OS host
+      ansible.builtin.wait_for_connection:
+        timeout: "{{ zos_connect_timeout_s | default(60) | int }}"
+        delay: 0
+        sleep: 5
+      register: conn_check
+      ignore_errors: true
+      ignore_unreachable: true
+
+    - name: Set connectivity fact
+      ansible.builtin.set_fact:
+        zos_conn_ok: "{{ conn_check is succeeded and conn_check is not unreachable }}"
+
+    ###########################################################################
+    # Cancel the active TSO session.
+    # A user with no active session is not an error - it is reported as
+    # "No active session" (see classification below).
+    ###########################################################################
+
+    - name: Terminate active TSO session
+      ibm.ibm_zos_core.zos_operator:
+        cmd: "C U={{ target_user }}"
+      register: cancel_result
+      ignore_errors: true
+      ignore_unreachable: true
+      when: zos_conn_ok | bool
+
+    - name: Classify session termination result
+      ansible.builtin.set_fact:
+        tso_cancel_response: "{{ cancel_result.stdout_lines | default([], true) | join(' ') }}"
+        tso_cancel_text: >-
+          {{ ((cancel_result.stdout_lines | default([], true) | join(' '))
+              ~ ' ' ~ (cancel_result.msg | default(''))) | upper }}
+      when: zos_conn_ok | bool
+
+    # With no response text the module's success cannot be confirmed, so it is
+    # reported as "Success (unconfirmed)". Notify treats that as not OK and
+    # shows the manual C U= command.
+    - name: Set TSO cancel status and detail
+      ansible.builtin.set_fact:
+        tso_cancel_status: >-
+          {{ 'Unreachable' if (not (zos_conn_ok | bool) or cancel_result is unreachable)
+             else ('No active session' if (tso_cancel_text | default('') is search('NOT FOUND|NOT ACTIVE|NOT LOGGED|NO SUCH'))
+             else ('Rejected' if (tso_cancel_text | default('') is search('REJECTED|INVALID'))
+             else ('Failed' if cancel_result is failed
+             else ('Success' if (tso_cancel_response | default('') | trim | length) > 0
+             else 'Success (unconfirmed)')))) }}
+        tso_cancel_detail: >-
+          {{ ('Host not reachable: ' ~ (conn_check.msg | default('timeout')))
+             if (not (zos_conn_ok | bool))
+             else ('The operator command returned no response text, so the session end is not confirmed. Check on z/OS.'
+                   if ((tso_cancel_response | default('') | trim | length) == 0
+                       and (cancel_result.msg | default('') | trim | length) == 0
+                       and cancel_result is not failed)
+                   else ((cancel_result.msg | default(tso_cancel_text | default(''))) | string | trim | truncate(300))) }}
+
+    - name: Log TSO session termination result
+      ansible.builtin.debug:
+        msg:
+          - "C U={{ target_user }}"
+          - "Status : {{ tso_cancel_status }}"
+          - "Detail : {{ tso_cancel_detail }}"
+
+    - name: Publish TSO cancel outcome as workflow artifacts
+      ansible.builtin.set_stats:
+        data:
+          tso_cancel_status: "{{ tso_cancel_status }}"
+          tso_cancel_detail: "{{ tso_cancel_detail }}"
+        per_host: false
+
+    - name: Share TSO cancel status facts with localhost
+      ansible.builtin.set_fact:
+        tso_cancel_status: "{{ tso_cancel_status }}"
+        tso_cancel_detail: "{{ tso_cancel_detail }}"
+      delegate_to: localhost
+      delegate_facts: true

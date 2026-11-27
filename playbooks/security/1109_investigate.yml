@@ -1,0 +1,579 @@
+################################################################################
+# Copyright (c) IBM Corporation 2026
+################################################################################
+
+################################################################################
+# zSecure alert C2P1109I (SPECIAL authority used by a non-SPECIAL user).
+# Investigation job of "EDA - Alert 1109 Response Workflow".
+#
+# Workflow position: first node (Investigate, this playbook).
+#
+#  1109 Investigate (this) -> Approval --Approve--> End Session -> Revoke Access --+
+#                                      |                                           |
+#                                      +--Deny / expired---------------------------+
+#                                                                                  v
+#                                                                        Notify and Email
+#
+# On Deny or an expired approval only Notify runs, and no action is taken
+# against the user.
+#
+# This job makes no change to the user. It:
+#   1. Reads the RACF profile with zos_user_info (LISTUSER).
+#   2. Submits a zSecure CARLa batch job (CKRCARLA) with zos_job_submit. The job
+#      lists the user's SMF type 80 records from the active SMF data sets, and
+#      the SYSPRINT listing is parsed.
+#   3. Publishes the findings as workflow artifacts (set_stats).
+#   4. Emails an approval request with the profile, the recent command history
+#      and a link to the workflow.
+#
+# The profile lookup and the history are best effort: if either cannot be read,
+# the job continues and the email says so. investigate_status is "failed" until
+# the last task sets it to "completed", so Notify can report an unfinished
+# investigation.
+#
+# Alert values come from ansible_eda.events.c2p1109i, which exists only when the
+# rulebook launches the workflow. Without it target_user is UNKNOWN and the
+# userid check stops the job before anything runs on z/OS.
+#
+# Requirements:
+# - ibm.ibm_zos_core 2.1.0 or later (zos_user_info, zos_job_submit) and
+#   community.general (mail).
+# - system_environment: environment variables for the z/OS tasks.
+# - The z/OS user needs read access to the active SMF data sets and to the
+#   zSecure library.
+#
+# Job template extra variables (system specific; set them in AAP, not here):
+#   aap_controller_host        Host name used to build the workflow link.
+#   security_alert_recipients  Email recipients. If empty, no email is sent and
+#                              the approval waits in AAP without a message.
+#   security_alert_sender, smtp_server, smtp_server_port
+#   zsecure_sckrload           (required) Library that holds CKRCARLA.
+#   zsecure_racf_db            (optional) RACF database; allocated as DD RACFDB.
+#   zsecure_ckfreeze           (optional) CKFREEZE data set for CARLa.
+#   zlda_max_records           (optional, default 100) Most recent records kept.
+#   zsecure_carla_jobname (CKRSMF80), zsecure_job_class (A),
+#   zsecure_job_msgclass (H), zsecure_carla_wait (seconds, default 60)
+#
+# Published workflow artifacts (set_stats):
+#   lu_user_id, lu_owner, lu_default_group, lu_last_access, lu_attributes,
+#   lu_joined          : RACF profile fields and the full LISTUSER text
+#                        (UNKNOWN if the profile could not be read)
+#   zlda_summary       : command history table from the CARLa listing
+#   zlda_summary_recent : same table limited to the last 10 records (email)
+#   zlda_record_count, zlda_status (ok | unavailable), zlda_reason
+#   carla_job_id       : z/OS job ID of the CARLa job
+#   investigate_status : failed | completed
+#   alert_command, alert_code, target_user, hostname : values from the alert
+#   approval_email_status : Sent | Skipped (no recipients) | Failed
+################################################################################
+
+---
+- name: Capture RACF user diagnostics - zSecure Alert 1109
+  hosts: "{{ target_hosts | default('zos_target') }}"
+  gather_facts: false
+  environment: "{{ system_environment | default({}) }}"
+
+  vars:
+    alert_code: "{{ ansible_eda.events.c2p1109i.body.alert_code | default('C2P1109I', true) }}"
+    alert_message: "{{ ansible_eda.events.c2p1109i.body.alert_message | default('', true) }}"
+    target_user: "{{ ansible_eda.events.c2p1109i.body.target_user | default('UNKNOWN', true) }}"
+    hostname: "{{ ansible_eda.events.c2p1109i.body.hostname | default('UNKNOWN', true) }}"
+
+    # AAP controller host, used to build the workflow link
+    aap_host: "{{ aap_controller_host | default('', true) }}"
+
+    # Email settings for the approval request (job template extra vars)
+    email_recipients: "{{ security_alert_recipients | default([], true) }}"
+    email_from: "{{ security_alert_sender | default('aap-security@example.com', true) }}"
+    smtp_host: "{{ smtp_server | default('localhost', true) }}"
+    smtp_port: "{{ smtp_server_port | default(25, true) }}"
+
+    # Link to this workflow run (needs awx_workflow_job_id and aap_controller_host)
+    workflow_url: >-
+      {{ 'https://' ~ aap_host ~ '/execution/jobs/workflow/' ~ awx_workflow_job_id
+         if (awx_workflow_job_id | default('', true) not in ('', None, 'None'))
+            and aap_host != ''
+         else 'N/A - set aap_controller_host in job template extra vars' }}
+
+  tasks:
+
+    ###########################################################################
+    # Published first so that a failure in any later task still leaves Notify
+    # the alert context. investigate_status stays "failed" until the last task,
+    # so Notify can tell a failed investigation from an admin deny.
+    ###########################################################################
+
+    # aggregate: false on every set_stats in this job. By default set_stats adds
+    # values with the same name together, which joins text (for example
+    # "USRT004USRT004"). Later calls must replace earlier ones.
+    - name: Publish alert context and mark investigation as not completed
+      ansible.builtin.set_stats:
+        data:
+          investigate_status: failed
+          target_user: "{{ target_user }}"
+          alert_code: "{{ alert_code }}"
+          alert_command: "{{ alert_message }}"
+          hostname: "{{ hostname }}"
+        per_host: false
+        aggregate: false
+
+    ###########################################################################
+    # target_user comes from an event and is used in z/OS commands and CARLa
+    # input. It must be a valid RACF userid (1-8 characters: A-Z 0-9 # $ @) and
+    # not a placeholder before anything else runs.
+    ###########################################################################
+
+    - name: Validate target_user is a RACF userid
+      ansible.builtin.assert:
+        that:
+          - (target_user | string | upper) is match('^[A-Z0-9#$@]{1,8}$')
+          - (target_user | string | upper) not in ['NONE', 'UNKNOWN']
+        fail_msg: "Refusing to act on invalid or placeholder userid '{{ target_user }}'"
+        quiet: true
+
+    ###########################################################################
+    # Display alert context
+    ###########################################################################
+
+    - name: Display alert 1109 context
+      ansible.builtin.debug:
+        msg:
+          - "=========================================="
+          - "zSecure Alert 1109 — SPECIAL Authority Used by Non-SPECIAL User"
+          - "=========================================="
+          - "Alert Code    : {{ alert_code }}"
+          - "User          : {{ target_user }}"
+          - "Hostname      : {{ hostname }}"
+          - "Alert Message : {{ alert_message }}"
+
+    ###########################################################################
+    # Read the RACF user profile (LISTUSER)
+    # LISTUSER AUDIT is not used: the AUDIT segment is not installed on the test
+    # system (RC=8, INVALID SEGMENT, AUDIT). Command history is read from SMF
+    # type 80 with zSecure CARLa instead.
+    ###########################################################################
+
+    # zos_user_info (ibm_zos_core 2.1.0 or later) runs LISTUSER and returns the
+    # profile as named fields in segments.base_segment, so no text parsing is
+    # needed. If z/OS cannot be reached or the user is not found, the play
+    # continues with UNKNOWN profile fields so that the approval email is still
+    # sent.
+    - name: Get RACF user profile
+      ibm.ibm_zos_core.zos_user_info:
+        name: "{{ target_user }}"
+        profile_type: user
+      register: listuser_output
+      ignore_errors: true
+      ignore_unreachable: true
+
+    - name: Decide whether the user profile is usable
+      ansible.builtin.set_fact:
+        lu_usable: >-
+          {{ listuser_output is not unreachable
+             and listuser_output is succeeded
+             and ((listuser_output.segments | default({})).base_segment | default({}) | length) > 0 }}
+
+    # Show the module result so that a failure (profile not found, unreachable
+    # host) is visible in the job output.
+    - name: Show user profile lookup result
+      ansible.builtin.debug:
+        msg:
+          - "Profile lookup rc     : {{ listuser_output.rc | default('n/a') }}"
+          - "Profile lookup msg    : {{ listuser_output.msg | default('') }}"
+          - "Profile usable        : {{ lu_usable }}"
+
+    - name: Set defaults if the user profile is not usable
+      ansible.builtin.set_fact:
+        lu_joined: "LISTUSER command failed, user not found, or z/OS host unreachable."
+        lu_user_id: "UNKNOWN"
+        lu_attributes: "UNKNOWN"
+        lu_last_access: "UNKNOWN"
+        lu_default_group: "UNKNOWN"
+        lu_owner: "UNKNOWN"
+      when: not (lu_usable | bool)
+
+    ###########################################################################
+    # Read key fields from the profile
+    ###########################################################################
+
+    # ATTRIBUTES is returned as a list (for example ["UAUDIT"]); an empty list
+    # is shown as NONE. The raw LISTUSER text (stdout) is kept in lu_joined.
+    - name: Read user profile fields
+      ansible.builtin.set_fact:
+        lu_joined: "{{ listuser_output.stdout | default('', true) }}"
+        lu_user_id: "{{ base['USER'] | default('UNKNOWN', true) }}"
+        lu_owner: "{{ base['OWNER'] | default('UNKNOWN', true) }}"
+        lu_default_group: "{{ base['DEFAULT-GROUP'] | default('UNKNOWN', true) }}"
+        lu_attributes: >-
+          {{ 'UNKNOWN' if 'ATTRIBUTES' not in base
+             else (([base['ATTRIBUTES'] | default([], true)] | flatten | join(' ')) or 'NONE') }}
+        lu_last_access: "{{ base['LAST-ACCESS'] | default('UNKNOWN', true) }}"
+      vars:
+        base: "{{ listuser_output.segments.base_segment }}"
+      when: lu_usable | bool
+
+    - name: Display parsed LISTUSER fields
+      ansible.builtin.debug:
+        msg:
+          - "User ID       : {{ lu_user_id }}"
+          - "Owner         : {{ lu_owner }}"
+          - "Default Group : {{ lu_default_group }}"
+          - "Attributes    : {{ lu_attributes }}"
+          - "Last Access   : {{ lu_last_access }}"
+
+    ###########################################################################
+    # Read the user's recent RACF command history from SMF type 80
+    #
+    # A zSecure CARLa batch job (CKRSMF80 by default) is submitted with
+    # zos_job_submit. It lists the user's SMF type 80 records from the active SMF
+    # data sets (ALLOC TYPE=SMF ACTIVE), so records that are no longer in the
+    # active data sets are not returned. SYSPRINT is read from the job output
+    # and parsed below.
+    #
+    # Settings (job template extra variables; system specific, never stored here):
+    #   zsecure_sckrload : library that holds CKRCARLA            (required)
+    #   zsecure_racf_db  : RACF database data set name            (optional)
+    #   zsecure_ckfreeze : CKFREEZE data set name                 (optional)
+    #   zlda_max_records : most recent records kept, default 100
+    #   zsecure_carla_jobname, zsecure_job_class, zsecure_job_msgclass,
+    #   zsecure_carla_wait
+    # The JCL is rendered from templates/jcl/zlda_smf80_query.jcl.j2.
+    ###########################################################################
+
+    # CKRCARLA reads only columns 1-72 of each SYSIN line and cuts longer lines
+    # without an error. The JCL template indents each line by 2 blanks, so a line
+    # here may be 70 characters at most (checked below).
+    - name: Build CARLa SYSIN for the SMF type 80 history query
+      ansible.builtin.set_fact:
+        carla_sysin: >-
+          {{ ['ALLOC TYPE=SMF ACTIVE;']
+             + (['ALLOC TYPE=RACF DD=RACFDB'] if (zsecure_racf_db | default('', true) | trim) != '' else [])
+             + (['ALLOC TYPE=CKFREEZE DSN=' ~ (zsecure_ckfreeze | trim)] if (zsecure_ckfreeze | default('', true) | trim) != '' else [])
+             + ['NEWLIST TYPE=SMF;',
+                'SELECT TYPE=80,USERID=' ~ (target_user | string | upper | trim) ~ ';',
+                'SORTLIST DATE TIME(8) USERID RESOURCE EVENTDESC'] }}
+
+    - name: Check zSecure CARLa settings
+      ansible.builtin.assert:
+        that:
+          - (zsecure_sckrload | default('', true) | string | trim) != ''
+          - (carla_sysin | map('length') | max) <= 70
+        fail_msg: >-
+          zsecure_sckrload is not set, a CARLa SYSIN line is longer than 70 characters
+          (the JCL template adds 2 blanks in front, and CARLa reads only 72 columns)
+        quiet: true
+      register: carla_check
+      ignore_errors: true
+
+    # The JCL template is rendered on the controller with this play's variables
+    # (including carla_sysin), copied to z/OS and submitted. A return code up to
+    # 4 is accepted.
+    - name: Submit zSecure CARLa job to read SMF type 80 history
+      ibm.ibm_zos_core.zos_job_submit:
+        src: templates/jcl/zlda_smf80_query.jcl.j2
+        remote_src: false
+        use_template: true
+        wait_time: "{{ zsecure_carla_wait | default(60, true) | int }}"
+        max_rc: 4
+        return_output: true
+      register: carla_job
+      ignore_errors: true
+      ignore_unreachable: true
+      when: carla_check is succeeded
+
+    # carla_run (state, rc, job_id, msg) and the SYSPRINT listing lines
+    # (carla_lines). state is ok, failed, unreachable or skipped.
+    - name: Collect the CARLa result and listing lines
+      vars:
+        carla_jobinfo: "{{ carla_job.jobs | default([]) | first | default({}, true) }}"
+      ansible.builtin.set_fact:
+        carla_run:
+          state: >-
+            {{ 'unreachable' if carla_job is unreachable
+               else ('skipped' if carla_job is skipped
+               else ('failed' if carla_job is failed else 'ok')) }}
+          rc: "{{ (carla_jobinfo.ret_code | default({})).code | default('n/a') }}"
+          job_id: "{{ carla_jobinfo.job_id | default('n/a', true) }}"
+          msg: "{{ carla_job.msg | default('', true) }}"
+        carla_lines: >-
+          {{ (carla_jobinfo.dds | default([])
+              | selectattr('dd_name', 'match', '(?i)^sysprint$')
+              | selectattr('content', 'defined')
+              | map(attribute='content') | list | flatten)
+             if (carla_job is succeeded and carla_job is not skipped) else [] }}
+
+    - name: Display CARLa run result
+      ansible.builtin.debug:
+        msg:
+          - "CARLa check      : {{ 'ok' if carla_check is succeeded else (carla_check.msg | default('failed')) }}"
+          - "CARLa state      : {{ carla_run.state }}"
+          - "CARLa job id     : {{ carla_run.job_id }}"
+          - "CARLa return code: {{ carla_run.rc }}"
+          - "CARLa message    : {{ carla_run.msg }}"
+          - "Listing lines    : {{ carla_lines | length }}"
+
+    # Parse the SYSPRINT listing into history records.
+    # Columns are located from the header line (Date, Time, User, Resource,
+    # Event description), not from fixed positions. The header may print a
+    # shortened "Event desc...", so only "Event" is searched for. The command is
+    # the first word of the event description (for example "Deldsd command (...)"
+    # gives DELDSD). The first character of each line may be a print control
+    # character, so a leading blank, 0, + or - is accepted before the date.
+    # RACINIT (logon) rows are dropped because the alert is about commands.
+    # History is optional: if this task fails, the tasks below fall back to
+    # "history unavailable" and the approval email is still sent.
+    - name: Parse the CARLa listing into history records
+      register: hist_parse_task
+      ignore_errors: true
+      ansible.builtin.set_fact:
+        carla_parse_json: |
+          {% set ns = namespace(status='ok', reason='', hdr='', rows=[], idx=-1, out=[], seen=0) %}
+          {% set me = target_user | string | upper | trim %}
+          {% set months = {'Jan': 1, 'Feb': 2, 'Mar': 3, 'Apr': 4, 'May': 5, 'Jun': 6, 'Jul': 7, 'Aug': 8, 'Sep': 9, 'Oct': 10, 'Nov': 11, 'Dec': 12} %}
+          {% if carla_check is failed %}
+          {% set ns.status = 'unavailable' %}
+          {% set ns.reason = carla_check.msg | default('CARLa settings are not valid') %}
+          {% elif carla_run.state == 'unreachable' %}
+          {% set ns.status = 'unavailable' %}
+          {% set ns.reason = 'z/OS host unreachable: ' ~ (carla_run.msg | truncate(150)) %}
+          {% elif carla_run.state == 'failed' %}
+          {% set ns.status = 'unavailable' %}
+          {% set ns.reason = 'CKRCARLA did not complete (rc ' ~ carla_run.rc ~ '): ' ~ (carla_run.msg | truncate(150)) %}
+          {% else %}
+          {% for l in carla_lines %}
+          {% if ns.hdr == '' and 'Date' in l and 'Resource' in l and 'Event' in l %}
+          {% set ns.hdr = l %}
+          {% endif %}
+          {% endfor %}
+          {% set h = ns.hdr %}
+          {% set pD = h.find('Date') %}
+          {% set pT = h.find('Time') %}
+          {% set pU = h.find('User') %}
+          {% set pR = h.find('Resource') %}
+          {% set pE = h.find('Event') %}
+          {% if h == '' %}
+          {% if (carla_lines | select('search', 'SMF records read') | list | length) == 0 %}
+          {% set ns.status = 'unavailable' %}
+          {% set ns.reason = 'CARLa produced no listing and no record count (' ~ (carla_lines | length) ~ ' lines read from SYSPRINT)' %}
+          {% endif %}
+          {% elif [pD, pT, pU, pR, pE] | min < 0 %}
+          {% set ns.status = 'unavailable' %}
+          {% set ns.reason = 'CARLa listing layout not recognised: expected columns Date, Time, User, Resource, Event description' %}
+          {% else %}
+          {% for l in carla_lines %}
+          {% if l is match('^[ 0+-]? *[0-9]{1,2} [A-Za-z]{3} [0-9]{4} [0-9]{2}:[0-9]{2}:[0-9]{2} ') %}
+          {% set ns.seen = ns.seen + 1 %}
+          {% set parts = (l[pD:pT] | trim).split() %}
+          {% set by = (l[pU:pR] | trim | upper) %}
+          {% set res = (l[pR:pE] | trim) %}
+          {% set desc = (l[pE:] | trim) %}
+          {% set ev = ((desc.split() | first) | upper) if (desc | length > 0) else '' %}
+          {% if parts | length == 3 and parts[1] in months and ev != 'RACINIT' and by == me %}
+          {% set ts = parts[2] ~ '-' ~ ('%02d' | format(months[parts[1]])) ~ '-' ~ ('%02d' | format(parts[0] | int)) ~ ' ' ~ (l[pT:pU] | trim) %}
+          {% set ns.rows = ns.rows + [{'timestamp': ts, 'by': by, 'command': ev, 'resource': res, 'description': desc, 'trigger': false}] %}
+          {% endif %}
+          {% endif %}
+          {% endfor %}
+          {% if ns.seen == 0 %}
+          {% set ns.status = 'unavailable' %}
+          {% set ns.reason = 'CARLa listing header was found but no data rows could be read' %}
+          {% endif %}
+          {% endif %}
+          {% endif %}
+          {% set rows = ns.rows | sort(attribute='timestamp') %}
+          {% set maxn = zlda_max_records | default(100) | int %}
+          {% for r in rows %}
+          {% if r.by == me and r.command != '' and r.resource != ''
+                and (r.command | upper) in (alert_message | string | upper)
+                and (r.resource | upper) in (alert_message | string | upper) %}
+          {% set ns.idx = loop.index0 %}
+          {% endif %}
+          {% endfor %}
+          {% for r in rows %}
+          {% if loop.index0 >= (rows | length) - maxn or loop.index0 == ns.idx %}
+          {% set ns.out = ns.out + [r | combine({'trigger': loop.index0 == ns.idx})] %}
+          {% endif %}
+          {% endfor %}
+          {{ {'status': ns.status, 'reason': ns.reason, 'records': ns.out} | to_json }}
+
+    - name: Read the parsed CARLa result
+      ansible.builtin.set_fact:
+        zlda_result: "{{ carla_parse_json if (carla_parse_json is mapping) else (carla_parse_json | trim | from_json) }}"
+      register: hist_read_task
+      ignore_errors: true
+
+    - name: Set ZLDA records and status
+      register: hist_set_task
+      ignore_errors: true
+      ansible.builtin.set_fact:
+        zlda_records: "{{ zlda_result.records | default([]) if (zlda_result is mapping) else [] }}"
+        zlda_status: "{{ zlda_result.status | default('unavailable') if (zlda_result is mapping) else 'unavailable' }}"
+        zlda_reason: >-
+          {{ (zlda_result.reason | default('')) if (zlda_result is mapping)
+             else ('CARLa output could not be read: ' ~ (hist_err | truncate(200))) }}
+      vars:
+        hist_err: >-
+          {{ (hist_parse_task.msg if (hist_parse_task | default({})).failed | default(false)
+              else (hist_read_task.msg if (hist_read_task | default({})).failed | default(false)
+              else 'reason not recorded')) | default('reason not recorded') | string }}
+
+    # Full history table, published as the zlda_summary artifact.
+    - name: Build ZLDA UAUDIT summary string
+      register: hist_full_task
+      ignore_errors: true
+      ansible.builtin.set_fact:
+        zlda_summary: |
+          {% if zlda_records | length > 0 %}
+          TIMESTAMP (z/OS local)  | BY       | RESOURCE                                     | EVENT DESCRIPTION
+          ------------------------+----------+----------------------------------------------+------------------------------------------------
+          {% for r in zlda_records %}
+          {{ "%-23s" | format(r.timestamp) }} | {{ "%-8s" | format(r.by) }} | {{ "%-44s" | format(r.resource) }} |
+          {{- ' ' ~ r.description }}{{ '   << TRIGGER' if r.trigger else '' }}
+          {% endfor %}
+          {% else %}
+          {{ ('No SMF type 80 command records found for ' ~ target_user ~ ' in the SMF data read.')
+             if zlda_status == 'ok'
+             else ('HISTORY UNAVAILABLE - could not be read: ' ~ zlda_reason) }}
+          {% endif %}
+
+    # Same columns, limited to the last zlda_recent_max_rows records (the trigger
+    # row is always kept). Used in the emails and published as zlda_summary_recent.
+    - name: Build recent ZLDA table for the email
+      register: hist_recent_task
+      ignore_errors: true
+      vars:
+        zlda_recent_max_rows: 10
+        zlda_cutoff: "{{ zlda_records | length - zlda_recent_max_rows }}"
+      ansible.builtin.set_fact:
+        zlda_summary_recent: |
+          {% if zlda_records | length > 0 %}
+          {% if zlda_cutoff | int > 0 %}
+          Showing the last {{ zlda_recent_max_rows }} of {{ zlda_records | length }} records - full list in workflow artifact zlda_summary
+          {% endif %}
+          TIMESTAMP (z/OS local)  | BY       | RESOURCE                                     | EVENT DESCRIPTION
+          ------------------------+----------+----------------------------------------------+------------------------------------------------
+          {% for r in zlda_records %}
+          {% if loop.index0 >= zlda_cutoff | int or r.trigger %}
+          {{ "%-23s" | format(r.timestamp) }} | {{ "%-8s" | format(r.by) }} | {{ "%-44s" | format(r.resource) }} |
+          {{- ' ' ~ r.description }}{{ '   << TRIGGER' if r.trigger else '' }}
+          {% endif %}
+          {% endfor %}
+          {% else %}
+          {{ ('No SMF type 80 command records found for ' ~ target_user ~ ' in the SMF data read.')
+             if zlda_status == 'ok'
+             else ('HISTORY UNAVAILABLE - could not be read: ' ~ zlda_reason) }}
+          {% endif %}
+
+    # If a history task above failed, set a clear "unavailable" text that includes
+    # the first error message (cut to 200 characters).
+    - name: Set history fallback if the history could not be built
+      when: zlda_summary is not defined or zlda_summary_recent is not defined or zlda_records is not defined
+      vars:
+        hist_errors: >-
+          {{ [hist_parse_task | default({}), hist_read_task | default({}), hist_set_task | default({}),
+              hist_full_task | default({}), hist_recent_task | default({})]
+             | selectattr('failed', 'defined') | selectattr('failed')
+             | map(attribute='msg') | map('string') | list }}
+        hist_why: "{{ (hist_errors | first | truncate(200)) if (hist_errors | length > 0) else 'reason not recorded' }}"
+      ansible.builtin.set_fact:
+        zlda_records: []
+        zlda_status: unavailable
+        zlda_reason: "history could not be built: {{ hist_why }}"
+        zlda_summary: "HISTORY UNAVAILABLE - could not be built: {{ hist_why }}"
+        zlda_summary_recent: "HISTORY UNAVAILABLE - could not be built: {{ hist_why }}"
+
+    - name: Display ZLDA UAUDIT summary
+      failed_when: false
+      ansible.builtin.debug:
+        msg:
+          - "=== ZLDA UAUDIT Command History for {{ target_user }} ==="
+          - "{{ zlda_summary | default('(not built)') }}"
+          - "Total UAUDIT records found: {{ zlda_records | default([]) | length }}"
+
+    ###########################################################################
+    # Publish workflow artifacts for the approval node and downstream jobs
+    ###########################################################################
+
+    - name: Publish UAUDIT findings as workflow artifacts
+      ansible.builtin.set_stats:
+        data:
+          lu_user_id: "{{ lu_user_id }}"
+          lu_attributes: "{{ lu_attributes }}"
+          lu_last_access: "{{ lu_last_access }}"
+          lu_default_group: "{{ lu_default_group }}"
+          lu_owner: "{{ lu_owner }}"
+          lu_joined: "{{ lu_joined }}"
+          zlda_summary: "{{ zlda_summary | default('HISTORY UNAVAILABLE - could not be built', true) }}"
+          zlda_summary_recent: "{{ zlda_summary_recent | default('HISTORY UNAVAILABLE - could not be built', true) }}"
+          carla_job_id: "{{ carla_run.job_id | default('n/a', true) }}"
+
+          zlda_record_count: "{{ zlda_records | default([]) | length }}"
+          zlda_status: "{{ zlda_status | default('unavailable', true) }}"
+          zlda_reason: "{{ zlda_reason | default('history could not be built') }}"
+          alert_command: "{{ alert_message }}"
+          alert_code: "{{ alert_code }}"
+          target_user: "{{ target_user }}"
+          hostname: "{{ hostname }}"
+        per_host: false
+        aggregate: false
+
+    ###########################################################################
+    # Email the approval request to the security team: the alert, the recent
+    # command history, the RACF profile and a link to the workflow where the
+    # approver chooses Approve or Deny. A failed or skipped email does not stop
+    # the job (the approval node keeps waiting in AAP). The result is shown in
+    # the log and published as approval_email_status.
+    ###########################################################################
+
+    - name: Build approval request email body
+      ansible.builtin.set_fact:
+        approval_body_html: "{{ lookup('template', 'templates/racf_1109_approval_request.html.j2') }}"
+      register: approval_body_result
+      ignore_errors: true
+
+    - name: Use fallback approval body if the template could not be rendered
+      ansible.builtin.set_fact:
+        approval_body_html: >-
+          <html><body><h3>zSecure Alert 1109 - approval needed</h3>
+          <p>User {{ target_user | e }} on {{ hostname | e }}.
+          Open the AAP workflow to approve or deny: {{ workflow_url | e }}</p></body></html>
+      when: approval_body_result is failed
+
+    - name: Email approval request to the security team
+      community.general.mail:
+        host: "{{ smtp_host }}"
+        port: "{{ smtp_port }}"
+        to: "{{ email_recipients }}"
+        from: "{{ email_from }}"
+        subject: >-
+          {{ ('[APPROVAL NEEDED] zSecure Alert ' ~ alert_code ~ ' - SPECIAL authority used by ' ~ target_user ~ ' on ' ~ hostname)
+             | regex_replace('[\r\n]+', ' ') }}
+        subtype: html
+        body: "{{ approval_body_html }}"
+      delegate_to: localhost
+      register: approval_mail
+      ignore_errors: true
+      when: email_recipients is defined and (email_recipients | length > 0)
+
+    - name: Set approval email status
+      ansible.builtin.set_fact:
+        approval_email_status: >-
+          {{ 'Sent' if (approval_mail is succeeded and approval_mail is not skipped)
+             else ('Skipped (no recipients)' if approval_mail is skipped else 'Failed') }}
+
+    - name: Show approval email status
+      ansible.builtin.debug:
+        msg: >-
+          Approval email: {{ approval_email_status }}.
+          {{ '' if approval_email_status == 'Sent'
+             else 'No approval request reached anyone. The workflow is waiting for approval in AAP: ' ~ workflow_url }}
+
+    # Last task. If the job fails before this point, investigate_status stays
+    # "failed" and Notify reports a failed investigation.
+    - name: Mark investigation as completed
+      ansible.builtin.set_stats:
+        data:
+          investigate_status: completed
+          approval_email_status: "{{ approval_email_status }}"
+        per_host: false
+        aggregate: false

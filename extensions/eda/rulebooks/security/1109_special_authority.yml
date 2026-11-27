@@ -1,0 +1,55 @@
+###############################################################################
+# Copyright (c) IBM Corporation 2026
+###############################################################################
+#
+# Monitors zSecure alert 1109 (C2P1109I, SPECIAL authority used by a non-SPECIAL
+# user) events delivered through Kafka. The alert means that a user exercised
+# SPECIAL authority that is no longer in their RACF profile.
+#
+# A C2P1109I event launches the AAP workflow template
+# "EDA - Alert 1109 Response Workflow" (organization Default):
+#   Investigate : reads the user's RACF profile and recent command history
+#                 (SMF type 80, zSecure CARLa) and emails an approval request
+#                 with a link to the workflow.
+#   Approval    : an admin chooses Approve or Deny in AAP.
+#   Approve     : ends the TSO session (C U=userid), revokes the user
+#                 (ALTUSER REVOKE), then notifies by email.
+#   Deny        : notifies by email only; no action is taken against the user.
+#                 An expired approval follows the same path as Deny.
+#
+# Required configuration:
+# - kafka_topic, kafka_host, kafka_port, security_protocol and cafile.
+# - The ibm.ibm_eda_zos.security_alerts event filter must be available.
+# - The workflow template must exist and be accessible to the rulebook in the
+#   Default organization.
+###############################################################################
+
+---
+- name: Rule to handle alert 1109 - SPECIAL Authority Used by Non-SPECIAL User
+  hosts: all
+
+  sources:
+    - name: kafka
+      ansible.eda.kafka:
+        topic: "{{ kafka_topic }}"
+        host: "{{ kafka_host }}"
+        port: "{{ kafka_port }}"
+        security_protocol: "{{ security_protocol }}"
+        ssl_cafile: "{{ cafile }}"
+        check_hostname: true
+
+      filters:
+        - ibm.ibm_eda_zos.security_alerts:
+            event_source: "kafka"
+
+  rules:
+    - name: Handle SPECIAL Authority Used by Non-SPECIAL User - C2P1109I
+
+      condition:
+        all:
+          - events.c2p1109i << event.body.alert_code == "C2P1109I"
+
+      action:
+        run_workflow_template:
+          name: "EDA - Alert 1109 Response Workflow"
+          organization: "Default"
